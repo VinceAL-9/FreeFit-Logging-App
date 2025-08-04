@@ -1,34 +1,40 @@
 // src/screens/WorkoutSessionScreen.tsx
 import React, { useState } from 'react';
-import { Button, FlatList, Text, TextInput, View } from 'react-native';
+import {
+  Button,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useWorkout } from '../context/WorkoutContext';
 
 export default function WorkoutSessionScreen() {
-  const { selectedExercises, addExercise } = useWorkout();
-  const [reps, setReps] = useState('');
-  const [weight, setWeight] = useState('');
-
-  const { addSetToExercise } = useWorkout();
+  const { selectedExercises, addSetToExercise } = useWorkout();
+  const [repsInput, setRepsInput] = useState('');
+  const [weightInput, setWeightInput] = useState('');
+  const [activeExercise, setActiveExercise] = useState<string | null>(null);
 
   const handleAddSet = (exerciseName: string) => {
-    const repsNum = parseInt(reps, 10);
-    const weightNum = parseFloat(weight);
+    const reps = parseInt(repsInput, 10);
+    const weight = parseFloat(weightInput);
 
-    if (!isNaN(repsNum) && !isNaN(weightNum)) {
-      addSetToExercise(exerciseName, repsNum, weightNum);
-      setReps('');
-      setWeight('');
+    if (!isNaN(reps) && !isNaN(weight)) {
+      addSetToExercise(exerciseName, reps, weight);
+      setRepsInput('');
+      setWeightInput('');
     }
   };
-
 
   return (
     <FlatList
       data={selectedExercises}
       keyExtractor={(item) => item.name}
+      contentContainerStyle={{ padding: 16 }}
       renderItem={({ item }) => (
-        <View style={{ marginBottom: 20, padding: 10, borderWidth: 1 }}>
-          <Text style={{ fontWeight: 'bold' }}>{item.name}</Text>
+        <View style={styles.card}>
+          <Text style={styles.exerciseName}>{item.name}</Text>
 
           {item.sets.map((set, index) => (
             <Text key={index}>
@@ -36,26 +42,65 @@ export default function WorkoutSessionScreen() {
             </Text>
           ))}
 
-          <TextInput
-            placeholder="Reps"
-            value={reps}
-            onChangeText={setReps}
-            keyboardType="numeric"
-            style={{ borderBottomWidth: 1 }}
-          />
-          <TextInput
-            placeholder="Weight"
-            value={weight}
-            onChangeText={setWeight}
-            keyboardType="numeric"
-            style={{ borderBottomWidth: 1, marginBottom: 5 }}
-          />
+          {activeExercise === item.name && (
+            <>
+              <TextInput
+                placeholder="Reps"
+                value={repsInput}
+                onChangeText={setRepsInput}
+                keyboardType="numeric"
+                style={styles.input}
+              />
+              <TextInput
+                placeholder="Weight (kg)"
+                value={weightInput}
+                onChangeText={setWeightInput}
+                keyboardType="numeric"
+                style={styles.input}
+              />
+              <Button
+                title="Add Set"
+                onPress={() => handleAddSet(item.name)}
+              />
+            </>
+          )}
+
           <Button
-            title="Add Set"
-            onPress={() => handleAddSet(item.name)}
+            title={
+              activeExercise === item.name
+                ? 'Cancel'
+                : 'Add Set'
+            }
+            onPress={() =>
+              setActiveExercise(
+                activeExercise === item.name ? null : item.name
+              )
+            }
           />
         </View>
       )}
     />
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  exerciseName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#aaa',
+    borderRadius: 4,
+    padding: 8,
+    marginVertical: 4,
+  },
+});

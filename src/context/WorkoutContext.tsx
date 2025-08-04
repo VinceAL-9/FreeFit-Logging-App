@@ -29,7 +29,13 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
   ]);
 };
 
-const addSetToExercise = (exerciseName: string, reps: number, weight: number) => {
+  const removeExercise = (exerciseName: string) => {
+    setSelectedExercises((prev) =>
+      prev.filter((e) => e.name !== exerciseName)
+    );
+  };
+
+  const addSetToExercise = (exerciseName: string, reps: number, weight: number) => {
   setSelectedExercises((prev) =>
     prev.map((exercise) =>
       exercise.name === exerciseName
@@ -42,19 +48,15 @@ const addSetToExercise = (exerciseName: string, reps: number, weight: number) =>
   );
 };
 
-  const removeExercise = (exerciseName: string) => {
-    setSelectedExercises((prev) =>
-      prev.filter((e) => e.name !== exerciseName)
-    );
-  };
 
   return (
-    <WorkoutContext.Provider value={{
-  selectedExercises,
-  addExercise,
-  removeExercise,
-  addSetToExercise,
-}}>
+    <WorkoutContext.Provider
+  value={{
+    selectedExercises,
+    addExercise,
+    removeExercise,
+    addSetToExercise,
+  }}>
       {children}
     </WorkoutContext.Provider>
   );
