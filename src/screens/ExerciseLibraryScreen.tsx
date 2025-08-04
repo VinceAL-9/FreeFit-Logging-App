@@ -1,29 +1,34 @@
 // src/screens/ExerciseLibraryScreen.tsx
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Button, FlatList, StyleSheet, Text, View } from 'react-native';
+import { useWorkout } from '../context/WorkoutContext';
+
+const mockExercises = [
+  { name: 'Bench Press' },
+  { name: 'Squat' },
+  { name: 'Deadlift' },
+  { name: 'Overhead Press' },
+  { name: 'Barbell Row' },
+];
 
 export default function ExerciseLibraryScreen() {
-  const exerciseList = [
-    'Bench Press',
-    'Squat',
-    'Deadlift',
-    'Overhead Press',
-    'Barbell Row',
-    'Pull-Up',
-    'Bicep Curl',
-    'Tricep Extension',
-  ]; // placeholder
+  const { addExercise } = useWorkout();
+
+  const handleAdd = (exercise: { name: string }) => {
+    addExercise(exercise);
+    Alert.alert('Added', `${exercise.name} added to workout`);
+    // You can replace with Toast later if you want
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Exercise Library</Text>
-
       <FlatList
-        data={exerciseList}
-        keyExtractor={(item) => item}
+        data={mockExercises}
+        keyExtractor={(item) => item.name}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.exerciseCard} onPress={() => {}}>
-            <Text style={styles.exerciseName}>{item}</Text>
-          </TouchableOpacity>
+          <View style={styles.exerciseItem}>
+            <Text style={styles.exerciseText}>{item.name}</Text>
+            <Button title="Add" onPress={() => handleAdd(item)} />
+          </View>
         )}
       />
     </View>
@@ -33,22 +38,17 @@ export default function ExerciseLibraryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#fff',
+    padding: 16,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  exerciseCard: {
-    padding: 15,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
+  exerciseItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: '#f1f1f1',
     borderRadius: 8,
   },
-  exerciseName: {
-    fontSize: 20,
+  exerciseText: {
+    fontSize: 16,
   },
 });
