@@ -2,10 +2,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import React from 'react';
 
+import ExerciseLibraryScreen from '../screens/ExerciseLibraryScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import HomeScreen from '../screens/HomeScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import TemplatesScreen from '../screens/TemplatesScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -15,8 +14,7 @@ export default function AppNavigator() {
       <Tab.Navigator>
         <Tab.Screen name="Home" component={HomeScreen} />
         <Tab.Screen name="History" component={HistoryScreen} />
-        <Tab.Screen name="Templates" component={TemplatesScreen} />
-        <Tab.Screen name="Settings" component={SettingsScreen} />
+        <Tab.Screen name="Exercise Library" component={ExerciseLibraryScreen} />
       </Tab.Navigator>
     </NavigationContainer>
   );
