@@ -1,8 +1,10 @@
 // src/screens/WorkoutSessionScreen.tsx
 import React, { useState } from 'react';
 import {
+  Alert,
   Button,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -10,8 +12,9 @@ import {
 } from 'react-native';
 import { useWorkout } from '../context/WorkoutContext';
 
+
 export default function WorkoutSessionScreen() {
-  const { selectedExercises, addSetToExercise } = useWorkout();
+  const { selectedExercises, addSetToExercise, removeSetFromExercise } = useWorkout();
   const [repsInput, setRepsInput] = useState('');
   const [weightInput, setWeightInput] = useState('');
   const [activeExercise, setActiveExercise] = useState<string | null>(null);
@@ -37,9 +40,35 @@ export default function WorkoutSessionScreen() {
           <Text style={styles.exerciseName}>{item.name}</Text>
 
           {item.sets.map((set, index) => (
-            <Text key={index}>
-              Set {index + 1}: {set.reps} reps @ {set.weight}kg
-            </Text>
+            <Pressable
+              key={index}
+              onLongPress={() => {
+                Alert.alert(
+                  `Set ${index + 1}`,
+                  `${set.reps} reps @ ${set.weight}kg`,
+                  [
+                    {
+                      text: 'Edit (Coming Soon)',
+                      onPress: () => {}, // placeholder
+                    },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: () => removeSetFromExercise(item.name, index),
+                    },
+                    { text: 'Cancel', style: 'cancel' },
+                  ]
+                );
+              }}
+              >
+              <Text>
+                Set {index + 1}: {set.reps} reps @ {set.weight}kg
+              </Text>
+              <Text style={{ fontSize: 12, color: 'gray', marginTop: 4 }}>
+                (Long press a set to delete or edit)
+              </Text>
+            </Pressable>
+            
           ))}
 
           {activeExercise === item.name && (
@@ -78,8 +107,10 @@ export default function WorkoutSessionScreen() {
             }
           />
         </View>
-      )}
+        
+      )} 
     />
+    
   );
 }
 

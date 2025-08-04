@@ -14,6 +14,7 @@ type WorkoutContextType = {
   addExercise: (exercise: { name: string }) => void;
   removeExercise: (exerciseName: string) => void;
   addSetToExercise: (exerciseName: string, reps: number, weight: number) => void;
+  removeSetFromExercise: (exerciseName: string, setIndex: number) => void;
 };
 
 
@@ -47,7 +48,20 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
     )
   );
 };
+  const removeSetFromExercise = (exerciseName: string, setIndex: number) => {
+    setSelectedExercises((prev) =>
+      prev.map((exercise) =>
+        exercise.name === exerciseName
+          ? {
+              ...exercise,
+              sets: exercise.sets.filter((_, index) => index !== setIndex),
+            }
+          : exercise
+      )
+    );
+  };
 
+  
 
   return (
     <WorkoutContext.Provider
@@ -56,7 +70,9 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
     addExercise,
     removeExercise,
     addSetToExercise,
-  }}>
+    removeSetFromExercise,
+  }}
+>
       {children}
     </WorkoutContext.Provider>
   );
@@ -69,3 +85,4 @@ export const useWorkout = () => {
   }
   return context;
 };
+
