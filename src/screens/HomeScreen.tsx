@@ -22,6 +22,7 @@ export default function HomeScreen() {
     restTimeRemaining,
     workoutStartTime,
     clearWorkout,
+    showToast,
   } = useWorkout();
   const { colors, isDark } = useTheme();
 
@@ -75,13 +76,10 @@ export default function HomeScreen() {
 
   const handleContinueWorkout = () => {
     if (selectedExercises.length === 0) {
-      Alert.alert(
-        'No Active Workout',
-        'Start a new workout by adding exercises from the Library.',
-        [
-          { text: 'OK', onPress: () => navigation.navigate('Library' as never) }
-        ]
-      );
+      showToast('No active workout. Add exercises from Library first!', 'info');
+      setTimeout(() => {
+        navigation.navigate('Library' as never);
+      }, 1500);
       return;
     }
     navigation.navigate('Workout' as never);
