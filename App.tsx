@@ -1,3 +1,4 @@
+// App.tsx
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { WorkoutProvider } from './src/context/WorkoutContext';
