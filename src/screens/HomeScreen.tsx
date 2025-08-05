@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTheme } from '../context/ThemeProvider';
 import { useWorkout } from '../context/WorkoutContext';
 
 export default function HomeScreen() {
@@ -22,6 +23,7 @@ export default function HomeScreen() {
     workoutStartTime,
     clearWorkout,
   } = useWorkout();
+  const { colors, isDark } = useTheme();
 
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -109,33 +111,42 @@ export default function HomeScreen() {
   const hasActiveWorkout = selectedExercises.length > 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: colors.background }]} 
+      contentContainerStyle={styles.contentContainer}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Workout Tracker</Text>
-        <Text style={styles.subtitle}>Track your strength journey</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Workout Tracker</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Track your strength journey</Text>
       </View>
 
       {/* Current Workout Status */}
       {hasActiveWorkout && (
-        <View style={styles.activeWorkoutCard}>
+        <View style={[styles.activeWorkoutCard, { 
+          backgroundColor: colors.info + '20', 
+          borderLeftColor: colors.info 
+        }]}>
           <View style={styles.activeWorkoutHeader}>
-            <Text style={styles.activeWorkoutTitle}>🏋️ Active Workout</Text>
+            <Text style={[styles.activeWorkoutTitle, { color: colors.info }]}>🏋️ Active Workout</Text>
             {isRestTimerActive && (
-              <View style={styles.restTimerBadge}>
+              <View style={[styles.restTimerBadge, { backgroundColor: colors.info }]}>
                 <Text style={styles.restTimerText}>Rest: {formatTime(restTimeRemaining)}</Text>
               </View>
             )}
           </View>
-          <Text style={styles.activeWorkoutInfo}>
+          <Text style={[styles.activeWorkoutInfo, { color: colors.text }]}>
             {selectedExercises.length} exercises • {getTotalSets(selectedExercises)} sets
           </Text>
           {workoutStartTime && (
-            <Text style={styles.activeWorkoutDuration}>
+            <Text style={[styles.activeWorkoutDuration, { color: colors.textSecondary }]}>
               Duration: {getWorkoutDuration()}
             </Text>
           )}
-          <TouchableOpacity style={styles.continueButton} onPress={handleContinueWorkout}>
+          <TouchableOpacity 
+            style={[styles.continueButton, { backgroundColor: colors.info }]} 
+            onPress={handleContinueWorkout}
+          >
             <Text style={styles.continueButtonText}>Continue Workout</Text>
           </TouchableOpacity>
         </View>
@@ -144,51 +155,51 @@ export default function HomeScreen() {
       {/* Quick Actions */}
       <View style={styles.quickActions}>
         <TouchableOpacity
-          style={[styles.actionButton, styles.primaryAction]}
+          style={[styles.actionButton, styles.primaryAction, { backgroundColor: colors.primary }]}
           onPress={handleNewWorkout}
         >
           <Text style={styles.actionButtonIcon}>💪</Text>
-          <Text style={styles.actionButtonText}>
+          <Text style={[styles.actionButtonText, { color: '#fff' }]}>
             {hasActiveWorkout ? 'New Workout' : 'Start Workout'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => navigation.navigate('History' as never)}
         >
           <Text style={styles.actionButtonIcon}>📊</Text>
-          <Text style={styles.actionButtonText}>View History</Text>
+          <Text style={[styles.actionButtonText, { color: colors.text }]}>View History</Text>
         </TouchableOpacity>
       </View>
 
       {/* Weekly Stats */}
-      <View style={styles.statsCard}>
-        <Text style={styles.statsTitle}>This Week</Text>
+      <View style={[styles.statsCard, { backgroundColor: colors.surface }]}>
+        <Text style={[styles.statsTitle, { color: colors.text }]}>This Week</Text>
         <View style={styles.statsGrid}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{weeklyStats.workouts}</Text>
-            <Text style={styles.statLabel}>Workouts</Text>
+            <Text style={[styles.statNumber, { color: colors.primary }]}>{weeklyStats.workouts}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Workouts</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{weeklyStats.sets}</Text>
-            <Text style={styles.statLabel}>Sets</Text>
+            <Text style={[styles.statNumber, { color: colors.primary }]}>{weeklyStats.sets}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Sets</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{weeklyStats.volume.toFixed(0)}kg</Text>
-            <Text style={styles.statLabel}>Volume</Text>
+            <Text style={[styles.statNumber, { color: colors.primary }]}>{weeklyStats.volume.toFixed(0)}kg</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Volume</Text>
           </View>
         </View>
       </View>
 
       {/* Recent History */}
       {lastWorkout && (
-        <View style={styles.recentCard}>
-          <Text style={styles.recentTitle}>Last Workout</Text>
+        <View style={[styles.recentCard, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.recentTitle, { color: colors.text }]}>Last Workout</Text>
           <View style={styles.recentWorkout}>
             <View style={styles.recentWorkoutInfo}>
-              <Text style={styles.recentWorkoutName}>{lastWorkout.name}</Text>
-              <Text style={styles.recentWorkoutDate}>
+              <Text style={[styles.recentWorkoutName, { color: colors.text }]}>{lastWorkout.name}</Text>
+              <Text style={[styles.recentWorkoutDate, { color: colors.textSecondary }]}>
                 {new Date(lastWorkout.date).toLocaleDateString('en-US', {
                   weekday: 'short',
                   month: 'short',
@@ -197,22 +208,22 @@ export default function HomeScreen() {
               </Text>
             </View>
             <View style={styles.recentWorkoutStats}>
-              <Text style={styles.recentStat}>
+              <Text style={[styles.recentStat, { color: colors.primary }]}>
                 {getTotalSets(lastWorkout.exercises)} sets
               </Text>
               {lastWorkout.duration && (
-                <Text style={styles.recentStat}>{lastWorkout.duration}m</Text>
+                <Text style={[styles.recentStat, { color: colors.primary }]}>{lastWorkout.duration}m</Text>
               )}
             </View>
           </View>
           <View style={styles.recentExercises}>
             {lastWorkout.exercises.slice(0, 3).map((exercise, index) => (
-              <Text key={index} style={styles.recentExercise}>
+              <Text key={index} style={[styles.recentExercise, { color: colors.textSecondary }]}>
                 • {exercise.name}
               </Text>
             ))}
             {lastWorkout.exercises.length > 3 && (
-              <Text style={styles.recentExercise}>
+              <Text style={[styles.recentExercise, { color: colors.textSecondary }]}>
                 • +{lastWorkout.exercises.length - 3} more
               </Text>
             )}
@@ -221,25 +232,25 @@ export default function HomeScreen() {
       )}
 
       {/* Exercise Library Preview */}
-      <View style={styles.libraryPreview}>
-        <Text style={styles.libraryTitle}>Exercise Library</Text>
+      <View style={[styles.libraryPreview, { backgroundColor: colors.surface }]}>
+        <Text style={[styles.libraryTitle, { color: colors.text }]}>Exercise Library</Text>
         <View style={styles.libraryGrid}>
-          <View style={styles.libraryItem}>
+          <View style={[styles.libraryItem, { backgroundColor: colors.background }]}>
             <Text style={styles.exerciseIcon}>🏋️</Text>
-            <Text style={styles.exerciseName}>Bench Press</Text>
+            <Text style={[styles.exerciseName, { color: colors.text }]}>Bench Press</Text>
           </View>
-          <View style={styles.libraryItem}>
+          <View style={[styles.libraryItem, { backgroundColor: colors.background }]}>
             <Text style={styles.exerciseIcon}>🦵</Text>
-            <Text style={styles.exerciseName}>Squat</Text>
+            <Text style={[styles.exerciseName, { color: colors.text }]}>Squat</Text>
           </View>
-          <View style={styles.libraryItem}>
+          <View style={[styles.libraryItem, { backgroundColor: colors.background }]}>
             <Text style={styles.exerciseIcon}>💪</Text>
-            <Text style={styles.exerciseName}>Deadlift</Text>
+            <Text style={[styles.exerciseName, { color: colors.text }]}>Deadlift</Text>
           </View>
-          <View style={styles.libraryItem}>
+          <View style={[styles.libraryItem, { backgroundColor: colors.background }]}>
             <TouchableOpacity onPress={() => navigation.navigate('Library' as never)}>
               <Text style={styles.exerciseIcon}>➕</Text>
-              <Text style={styles.exerciseName}>View All</Text>
+              <Text style={[styles.exerciseName, { color: colors.text }]}>View All</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -247,7 +258,7 @@ export default function HomeScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
+        <Text style={[styles.footerText, { color: colors.textSecondary }]}>
           {workoutHistory.length > 0 
             ? `${workoutHistory.length} total workouts completed`
             : 'Start your first workout to see progress!'
@@ -261,7 +272,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   contentContainer: {
     padding: 20,
@@ -273,20 +283,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1a1a1a',
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
   },
   activeWorkoutCard: {
-    backgroundColor: '#e3f2fd',
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#1976d2',
   },
   activeWorkoutHeader: {
     flexDirection: 'row',
@@ -297,10 +303,8 @@ const styles = StyleSheet.create({
   activeWorkoutTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1976d2',
   },
   restTimerBadge: {
-    backgroundColor: '#1976d2',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -312,16 +316,13 @@ const styles = StyleSheet.create({
   },
   activeWorkoutInfo: {
     fontSize: 14,
-    color: '#333',
     marginBottom: 4,
   },
   activeWorkoutDuration: {
     fontSize: 12,
-    color: '#666',
     marginBottom: 12,
   },
   continueButton: {
-    backgroundColor: '#1976d2',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -338,7 +339,6 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
@@ -347,9 +347,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 1,
   },
   primaryAction: {
-    backgroundColor: '#007AFF',
+    borderWidth: 0,
   },
   actionButtonIcon: {
     fontSize: 24,
@@ -358,10 +359,8 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
   },
   statsCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
@@ -375,7 +374,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
-    color: '#1a1a1a',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -387,15 +385,12 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#007AFF',
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
     marginTop: 4,
   },
   recentCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
@@ -409,7 +404,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
-    color: '#1a1a1a',
   },
   recentWorkout: {
     flexDirection: 'row',
@@ -423,18 +417,15 @@ const styles = StyleSheet.create({
   recentWorkoutName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
   },
   recentWorkoutDate: {
     fontSize: 12,
-    color: '#666',
   },
   recentWorkoutStats: {
     alignItems: 'flex-end',
   },
   recentStat: {
     fontSize: 12,
-    color: '#007AFF',
     fontWeight: '600',
   },
   recentExercises: {
@@ -442,11 +433,9 @@ const styles = StyleSheet.create({
   },
   recentExercise: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 2,
   },
   libraryPreview: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
@@ -460,7 +449,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
-    color: '#1a1a1a',
   },
   libraryGrid: {
     flexDirection: 'row',
@@ -472,7 +460,6 @@ const styles = StyleSheet.create({
     minWidth: '45%',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#f8f9fa',
     borderRadius: 8,
   },
   exerciseIcon: {
@@ -481,7 +468,6 @@ const styles = StyleSheet.create({
   },
   exerciseName: {
     fontSize: 12,
-    color: '#333',
     textAlign: 'center',
   },
   footer: {
@@ -491,7 +477,6 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#999',
     textAlign: 'center',
   },
 });

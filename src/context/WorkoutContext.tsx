@@ -1,9 +1,9 @@
 // src/context/WorkoutContext.tsx
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Alert, Vibration } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
+
 
 export interface Set {
   reps: number;
@@ -24,6 +24,13 @@ export interface Workout {
   duration?: number;
 }
 
+export interface Settings {
+  restTimerDuration: number;
+  soundEnabled: boolean;
+  hapticsEnabled: boolean;
+  theme: 'light' | 'dark' | 'system';
+}
+
 interface WorkoutContextType {
   selectedExercises: Exercise[];
   addExercise: (exercise: { name: string }) => void;
@@ -39,6 +46,9 @@ interface WorkoutContextType {
   startRestTimer: (seconds?: number) => void;
   stopRestTimer: () => void;
   workoutStartTime: Date | null;
+  settings: Settings;
+  updateSettings: (newSettings: Partial<Settings>) => void;
+  showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
@@ -46,10 +56,15 @@ const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
 const STORAGE_KEYS = {
   WORKOUT_HISTORY: '@workout_history',
   CURRENT_WORKOUT: '@current_workout',
-  REST_TIMER_DURATION: '@rest_timer_duration',
+  SETTINGS: '@settings',
 };
 
-const DEFAULT_REST_TIME = 180; // 3 minutes in seconds
+const DEFAULT_SETTINGS: Settings = {
+  restTimerDuration: 180, // 3 minutes
+  soundEnabled: true,
+  hapticsEnabled: true,
+  theme: 'system',
+};
 
 export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
@@ -57,19 +72,46 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isRestTimerActive, setIsRestTimerActive] = useState(false);
   const [restTimeRemaining, setRestTimeRemaining] = useState(0);
   const [workoutStartTime, setWorkoutStartTime] = useState<Date | null>(null);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   
   const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load data on component mount
   useEffect(() => {
     loadWorkoutHistory();
     loadCurrentWorkout();
+    loadSettings();
   }, []);
 
   // Auto-save current workout when it changes
   useEffect(() => {
     saveCurrentWorkout();
   }, [selectedExercises]);
+
+  const loadSettings = async () => {
+    try {
+      const settingsData = await AsyncStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (settingsData) {
+        setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(settingsData) });
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  };
+
+  const updateSettings = async (newSettings: Partial<Settings>) => {
+    try {
+      const updatedSettings = { ...settings, ...newSettings };
+      setSettings(updatedSettings);
+      await AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updatedSettings));
+    } catch (error) {
+      console.error('Error updating settings:', error);
+    }
+  };
 
   const loadWorkoutHistory = async () => {
     try {
@@ -117,10 +159,60 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+
+    // Clear any existing timeout
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+
+    // Auto-hide toast after 3 seconds
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastVisible(false);
+    }, 3000);
+  };
+
+  const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'error' = 'light') => {
+    if (!settings.hapticsEnabled) return;
+
+    try {
+      switch (type) {
+        case 'light':
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          break;
+        case 'medium':
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          break;
+        case 'heavy':
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          break;
+        case 'success':
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          break;
+        case 'error':
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          break;
+      }
+    } catch (error) {
+      // Fallback to vibration
+      const patterns = {
+        light: 50,
+        medium: 100,
+        heavy: 200,
+        success: [100, 50, 100],
+        error: [100, 50, 100, 50, 100],
+      };
+      Vibration.vibrate(patterns[type]);
+    }
+  };
+
   const addExercise = (exercise: { name: string }) => {
     const existingExercise = selectedExercises.find(ex => ex.name === exercise.name);
     if (existingExercise) {
-      Alert.alert('Exercise already added', `${exercise.name} is already in your workout.`);
+      showToast(`${exercise.name} is already in your workout`, 'error');
       return;
     }
 
@@ -136,13 +228,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setWorkoutStartTime(new Date());
     }
 
-    // Haptic feedback
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch (error) {
-      // Fallback to vibration
-      Vibration.vibrate(50);
-    }
+    showToast(`${exercise.name} added to workout`, 'success');
+    triggerHaptic('light');
   };
 
   const addSetToExercise = (exerciseName: string, reps: number, weight: number) => {
@@ -163,12 +250,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Auto-start rest timer after adding a set
     startRestTimer();
 
-    // Haptic feedback for successful set log
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch (error) {
-      Vibration.vibrate(100);
-    }
+    showToast(`Set logged: ${reps} reps @ ${weight}kg`, 'success');
+    triggerHaptic('medium');
   };
 
   const removeSetFromExercise = (exerciseName: string, setIndex: number) => {
@@ -180,12 +263,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       )
     );
 
-    // Haptic feedback for deletion
-    try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    } catch (error) {
-      Vibration.vibrate([50, 50, 50]);
-    }
+    showToast('Set deleted', 'info');
+    triggerHaptic('error');
   };
 
   const editSetInExercise = (exerciseName: string, setIndex: number, reps: number, weight: number) => {
@@ -204,15 +283,11 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       )
     );
 
-    // Light haptic feedback for edit
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch (error) {
-      Vibration.vibrate(30);
-    }
+    showToast(`Set updated: ${reps} reps @ ${weight}kg`, 'success');
+    triggerHaptic('light');
   };
 
-  const startRestTimer = (seconds: number = DEFAULT_REST_TIME) => {
+  const startRestTimer = (seconds: number = settings.restTimerDuration) => {
     // Clear any existing timer
     if (restTimerRef.current) {
       clearInterval(restTimerRef.current);
@@ -228,12 +303,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setIsRestTimerActive(false);
           clearInterval(restTimerRef.current!);
           
-          // Rest timer completion haptic feedback
-          try {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          } catch (error) {
-            Vibration.vibrate([100, 50, 100]);
-          }
+          showToast('Rest time finished!', 'success');
+          triggerHaptic('success');
           
           return 0;
         }
@@ -253,7 +324,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const finishWorkout = async (workoutName?: string) => {
     if (selectedExercises.length === 0) {
-      Alert.alert('No workout to save', 'Add some exercises and sets before finishing your workout.');
+      showToast('No workout to save. Add some exercises first!', 'error');
       return;
     }
 
@@ -277,18 +348,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Clear current workout
     clearWorkout();
 
-    // Success haptic feedback
-    try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error) {
-      Vibration.vibrate([200, 100, 200]);
-    }
-
-    Alert.alert(
-      'Workout Saved!',
-      `Great job! Your workout "${workout.name}" has been saved.${duration > 0 ? ` Duration: ${duration} minutes.` : ''}`,
-      [{ text: 'OK' }]
-    );
+    triggerHaptic('success');
+    showToast(`Workout saved: ${workout.name}!`, 'success');
   };
 
   const clearWorkout = () => {
@@ -316,11 +377,14 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return history.slice(0, 5); // Return last 5 sessions
   };
 
-  // Cleanup timer on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (restTimerRef.current) {
         clearInterval(restTimerRef.current);
+      }
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
       }
     };
   }, []);
@@ -340,11 +404,88 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     startRestTimer,
     stopRestTimer,
     workoutStartTime,
+    settings,
+    updateSettings,
+    showToast,
   };
 
-  return <WorkoutContext.Provider value={value}>{children}</WorkoutContext.Provider>;
+  return (
+    <WorkoutContext.Provider value={value}>
+      {children}
+      {/* Toast Component */}
+      {toastVisible && (
+        <Toast 
+          message={toastMessage} 
+          type={toastType} 
+          onDismiss={() => setToastVisible(false)} 
+        />
+      )}
+    </WorkoutContext.Provider>
+  );
 };
 
+// Toast Component
+const Toast: React.FC<{ 
+  message: string; 
+  type: 'success' | 'error' | 'info'; 
+  onDismiss: () => void; 
+}> = ({ message, type, onDismiss }) => {
+  const getToastColor = () => {
+    switch (type) {
+      case 'success': return '#4CAF50'; // green
+      case 'error': return '#f44336';   // red
+      default: return '#2196F3';         // blue for info
+    }
+  };
+
+  return (
+    <View style={[toastStyles.container, { backgroundColor: getToastColor() }]}>
+      <Text style={toastStyles.text}>{message}</Text>
+      <TouchableOpacity onPress={onDismiss} style={toastStyles.closeButton} accessibilityLabel="Dismiss toast">
+        <Text style={toastStyles.closeText}>{'\u00D7'}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const toastStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    right: 20,
+    padding: 16,
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  text: {
+    color: '#fff',
+    fontWeight: '600',
+    flex: 1,
+  },
+  closeButton: {
+    marginLeft: 10,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+});
+
+export default Toast;
 export const useWorkout = () => {
   const context = useContext(WorkoutContext);
   if (context === undefined) {
