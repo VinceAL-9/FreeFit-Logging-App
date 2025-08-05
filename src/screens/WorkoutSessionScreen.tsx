@@ -14,10 +14,17 @@ import { useWorkout } from '../context/WorkoutContext';
 
 
 export default function WorkoutSessionScreen() {
-  const { selectedExercises, addSetToExercise, removeSetFromExercise } = useWorkout();
+  const { selectedExercises, addSetToExercise, removeSetFromExercise, editSetInExercise } = useWorkout();
   const [repsInput, setRepsInput] = useState('');
   const [weightInput, setWeightInput] = useState('');
   const [activeExercise, setActiveExercise] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState<{
+    exerciseName: string;
+    setIndex: number;
+  } | null>(null);
+  const [editReps, setEditReps] = useState('');
+  const [editWeight, setEditWeight] = useState('');
+
 
   const handleAddSet = (exerciseName: string) => {
     const reps = parseInt(repsInput, 10);
@@ -48,8 +55,12 @@ export default function WorkoutSessionScreen() {
                   `${set.reps} reps @ ${set.weight}kg`,
                   [
                     {
-                      text: 'Edit (Coming Soon)',
-                      onPress: () => {}, // placeholder
+                      text: 'Edit',
+                      onPress: () => {
+                        setEditMode({ exerciseName: item.name, setIndex: index });
+                        setEditReps(set.reps.toString());
+                        setEditWeight(set.weight.toString());
+                      },
                     },
                     {
                       text: 'Delete',
@@ -60,6 +71,8 @@ export default function WorkoutSessionScreen() {
                   ]
                 );
               }}
+
+              
               >
               <Text>
                 Set {index + 1}: {set.reps} reps @ {set.weight}kg
@@ -70,6 +83,52 @@ export default function WorkoutSessionScreen() {
             </Pressable>
             
           ))}
+
+          {editMode &&
+            editMode.exerciseName === item.name &&
+            (() => {
+
+              const isEditingThisExercise = item.name === editMode.exerciseName;
+              return (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={{ fontWeight: 'bold' }}>Editing Set {editMode.setIndex + 1}</Text>
+                  <TextInput
+                    placeholder="New Reps"
+                    value={editReps}
+                    onChangeText={setEditReps}
+                    keyboardType="numeric"
+                    style={styles.input}
+                  />
+                  <TextInput
+                    placeholder="New Weight (kg)"
+                    value={editWeight}
+                    onChangeText={setEditWeight}
+                    keyboardType="numeric"
+                    style={styles.input}
+                  />
+                  <Button
+                    title="Save Changes"
+                    onPress={() => {
+                      const newReps = parseInt(editReps, 10);
+                      const newWeight = parseFloat(editWeight);
+
+                      if (!isNaN(newReps) && !isNaN(newWeight)) {
+                        if (newReps <= 0 || newWeight < 0) {
+                          Alert.alert('Invalid input', 'Reps must be greater than 0 and weight cannot be negative.');
+                          return;
+                        }
+                        editSetInExercise(item.name, editMode.setIndex, newReps, newWeight);
+                        setEditMode(null);
+                        setEditReps('');
+                        setEditWeight('');
+                      }
+                    }}
+                  />
+                  <Button title="Cancel Edit" color="gray" onPress={() => setEditMode(null)} />
+                </View>
+              );
+            })()}
+
 
           {activeExercise === item.name && (
             <>
@@ -87,10 +146,12 @@ export default function WorkoutSessionScreen() {
                 keyboardType="numeric"
                 style={styles.input}
               />
-              <Button
-                title="Add Set"
-                onPress={() => handleAddSet(item.name)}
-              />
+              {!editMode && (
+                <Button
+                  title="Add Set"
+                  onPress={() => handleAddSet(item.name)}
+                />
+              )}
             </>
           )}
 

@@ -15,6 +15,7 @@ type WorkoutContextType = {
   removeExercise: (exerciseName: string) => void;
   addSetToExercise: (exerciseName: string, reps: number, weight: number) => void;
   removeSetFromExercise: (exerciseName: string, setIndex: number) => void;
+  editSetInExercise: (exerciseName: string, setIndex: number, newReps: number, newWeight: number) => void;
 };
 
 
@@ -61,6 +62,25 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
+  const editSetInExercise = (
+  exerciseName: string,
+  setIndex: number,
+  newReps: number,
+  newWeight: number) => {
+  setSelectedExercises((prev) =>
+    prev.map((exercise) =>
+      exercise.name === exerciseName
+        ? {
+            ...exercise,
+            sets: exercise.sets.map((set, index) =>
+              index === setIndex ? { reps: newReps, weight: newWeight } : set
+            ),
+          }
+        : exercise
+      )
+    );
+  };
+
   
 
   return (
@@ -71,6 +91,7 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
     removeExercise,
     addSetToExercise,
     removeSetFromExercise,
+    editSetInExercise,
   }}
 >
       {children}
