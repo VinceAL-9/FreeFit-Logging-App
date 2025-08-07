@@ -10,11 +10,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTheme } from '../context/ThemeProvider';
 import type { Workout } from '../context/WorkoutContext';
 import { useWorkout } from '../context/WorkoutContext';
 
 export default function HistoryScreen() {
-  const { workoutHistory, clearWorkout } = useWorkout();
+  const { workoutHistory } = useWorkout();
+  const { colors } = useTheme();
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
 
   const formatDate = (dateString: string): string => {
@@ -99,7 +101,7 @@ export default function HistoryScreen() {
 
   const renderWorkoutItem = ({ item }: { item: Workout }) => (
     <TouchableOpacity
-      style={styles.workoutCard}
+      style={[styles.workoutCard, { backgroundColor: colors.surface }]}
       onPress={() => setSelectedWorkout(selectedWorkout?.id === item.id ? null : item)}
       onLongPress={() =>
         Alert.alert(
@@ -114,28 +116,29 @@ export default function HistoryScreen() {
     >
       <View style={styles.workoutHeader}>
         <View style={styles.workoutInfo}>
-          <Text style={styles.workoutName}>{item.name}</Text>
-          <Text style={styles.workoutDate}>
+          <Text style={[styles.workoutName, { color: colors.text }]}>{item.name}</Text>
+          <Text style={[styles.workoutDate, { color: colors.textSecondary }]}>
             {formatDate(item.date)} at {formatTime(item.date)}
           </Text>
         </View>
         <View style={styles.workoutStats}>
-          <Text style={styles.statText}>{getTotalSets(item)} sets</Text>
-          {item.duration && <Text style={styles.statText}>{item.duration}m</Text>}
+          <Text style={[styles.statText, { color: colors.primary }]}>{getTotalSets(item)} sets</Text>
+          {item.duration && <Text style={[styles.statText, { color: colors.primary }]}>{item.duration}m</Text>}
         </View>
       </View>
 
       <View style={styles.exercisesSummary}>
         {item.exercises.map((exercise, index) => (
-          <Text key={index} style={styles.exerciseSummary}>
+          <Text key={index} style={[styles.exerciseSummary, { color: colors.text }]}>
             {exercise.name} ({exercise.sets.length} sets)
           </Text>
         ))}
       </View>
 
       {selectedWorkout?.id === item.id && (
-        <View style={styles.workoutDetails}>
-          <Text style={styles.detailsTitle}>Workout Details:</Text>
+        <View style={[styles.workoutDetails, { borderTopColor: colors.border }]}>
+          <Text style={[styles.detailsTitle, { color: colors.text }]}>Workout Details:</Text>
+        
           {item.exercises.map((exercise, exerciseIndex) => (
             <View key={exerciseIndex} style={styles.exerciseDetail}>
               <Text style={styles.exerciseDetailName}>{exercise.name}</Text>
@@ -168,9 +171,9 @@ export default function HistoryScreen() {
 
   if (workoutHistory.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyTitle}>No Workout History</Text>
-        <Text style={styles.emptyText}>
+      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>No Workout History</Text>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
           Complete your first workout to see it here!
         </Text>
       </View>
@@ -178,35 +181,35 @@ export default function HistoryScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Workout History</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Workout History</Text>
         <TouchableOpacity
-          style={styles.exportButton}
+          style={[styles.exportButton, { backgroundColor: colors.primary }]}
           onPress={exportAllWorkoutsToCSV}
         >
           <Text style={styles.exportButtonText}>Export All</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.statsBar}>
+      <View style={[styles.statsBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{workoutHistory.length}</Text>
-          <Text style={styles.statLabel}>Workouts</Text>
+          <Text style={[styles.statNumber, { color: colors.primary }]}>{workoutHistory.length}</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Workouts</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>
+          <Text style={[styles.statNumber, { color: colors.primary }]}>
             {workoutHistory.reduce((total, workout) => total + getTotalSets(workout), 0)}
           </Text>
-          <Text style={styles.statLabel}>Total Sets</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Sets</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>
+          <Text style={[styles.statNumber, { color: colors.primary }]}>
             {workoutHistory
               .reduce((total, workout) => total + getTotalWeight(workout), 0)
               .toFixed(0)}kg
           </Text>
-          <Text style={styles.statLabel}>Total Volume</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Volume</Text>
         </View>
       </View>
 
@@ -220,6 +223,7 @@ export default function HistoryScreen() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

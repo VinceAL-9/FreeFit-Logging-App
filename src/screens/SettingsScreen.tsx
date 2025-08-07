@@ -2,13 +2,13 @@
 
 import React from 'react';
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { ThemeMode, useTheme } from '../context/ThemeProvider';
 import { useWorkout } from '../context/WorkoutContext';
@@ -27,8 +27,7 @@ const SettingsScreen: React.FC = () => {
     return `${minutes} min`;
   };
 
-  const restTimerOptions = [60, 90, 120, 180, 240, 300]; // 1-5 minutes
-
+  const restTimerOptions = [60, 90, 120, 180, 240, 300]; // 1, 1.5, 2, 3, 4, 5 minutes
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
@@ -84,30 +83,25 @@ const SettingsScreen: React.FC = () => {
 
           <View style={styles.restTimerOptions}>
             {restTimerOptions.map((duration) => (
-              <TouchableOpacity
-                key={duration}
-                style={[
-                  styles.restTimerOption,
-                  {
-                    backgroundColor: settings.restTimerDuration === duration 
-                      ? colors.primary : colors.border,
-                  },
-                ]}
-                onPress={() => updateSettings({ restTimerDuration: duration })}
-              >
-                <Text
-                  style={[
-                    styles.restTimerOptionText,
-                    {
-                      color: settings.restTimerDuration === duration 
-                        ? '#fff' : colors.text,
-                    },
-                  ]}
-                >
-                  {formatTime(duration)}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity
+              key={duration} // ✅ Ensure unique keys
+              style={[styles.restTimerOption, {
+                backgroundColor: settings.restTimerDuration === duration 
+                  ? colors.primary : colors.border,
+              }]}
+              onPress={() => updateSettings({ restTimerDuration: duration })}
+            >
+              <Text style={[styles.restTimerOptionText, {
+                color: settings.restTimerDuration === duration 
+                  ? '#fff' : colors.text,
+              }]}>
+                {formatTime(duration)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+
+            
           </View>
         </View>
 

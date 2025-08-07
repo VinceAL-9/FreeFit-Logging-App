@@ -21,6 +21,7 @@ const formatTime = (seconds: number): string => {
 };
 
 // Increment/Decrement Component
+// Fixed IncrementInput component in WorkoutSessionScreen.tsx
 const IncrementInput: React.FC<{
   value: string;
   onValueChange: (value: string) => void;
@@ -45,9 +46,11 @@ const IncrementInput: React.FC<{
   };
 
   const handleTextChange = (text: string) => {
-    // Allow decimal numbers
-    const numericValue = text.replace(/[^0-9.]/g, '');
-    onValueChange(numericValue);
+    // Allow decimal numbers and empty string
+    if (text === '' || /^\d*\.?\d*$/.test(text)) {
+      onValueChange(text);
+    }
+  
   };
 
   return (
@@ -58,6 +61,7 @@ const IncrementInput: React.FC<{
           style={[styles.incrementButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={decrement}
           activeOpacity={0.7}
+          accessibilityLabel={`Decrease ${label.toLowerCase()}`}
         >
           <Text style={[styles.incrementButtonText, { color: colors.text }]}>−</Text>
         </TouchableOpacity>
@@ -68,25 +72,29 @@ const IncrementInput: React.FC<{
             borderColor: colors.border,
             color: colors.text 
           }]}
-          value={value}
+          value={value} // ✅ This was missing!
           onChangeText={handleTextChange}
           keyboardType="numeric"
           textAlign="center"
           selectTextOnFocus
+          accessibilityLabel={`${label} input field`}
         />
         
         <TouchableOpacity
           style={[styles.incrementButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={increment}
           activeOpacity={0.7}
+          accessibilityLabel={`Increase ${label.toLowerCase()}`}
         >
           <Text style={[styles.incrementButtonText, { color: colors.text }]}>+</Text>
         </TouchableOpacity>
       </View>
       {suffix && <Text style={[styles.incrementSuffix, { color: colors.textSecondary }]}>{suffix}</Text>}
     </View>
+    
   );
 };
+
 
 // Quick Weight Buttons Component  
 const QuickWeightButtons: React.FC<{
@@ -387,6 +395,7 @@ export default function WorkoutSessionScreen() {
                   <IncrementInput
                     value={repsInput}
                     onValueChange={setRepsInput}
+                    step={1} // ✅ Use step=1 for reps
                     label="Reps"
                     min={1}
                     max={100}
@@ -394,12 +403,13 @@ export default function WorkoutSessionScreen() {
                   <IncrementInput
                     value={weightInput}
                     onValueChange={setWeightInput}
-                    step={2.5}
+                    step={2.5} // ✅ Use step=2.5 for weight
                     label="Weight"
                     suffix="kg"
                     max={500}
                   />
                 </View>
+
 
                 <QuickWeightButtons
                   currentWeight={weightInput}
