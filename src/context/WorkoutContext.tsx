@@ -9,6 +9,7 @@ export interface Set {
   reps: number;
   weight: number;
   timestamp: string;
+  unit: 'kg' | 'lbs';
 }
 
 export interface Exercise {
@@ -29,6 +30,7 @@ export interface Settings {
   soundEnabled: boolean;
   hapticsEnabled: boolean;
   theme: 'light' | 'dark' | 'system';
+  weightUnit: 'kg' | 'lbs';
 }
 
 interface WorkoutContextType {
@@ -64,6 +66,7 @@ const DEFAULT_SETTINGS: Settings = {
   soundEnabled: true,
   hapticsEnabled: true,
   theme: 'system',
+  weightUnit: 'kg',
 };
 
 export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -234,10 +237,11 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addSetToExercise = (exerciseName: string, reps: number, weight: number) => {
     const newSet: Set = {
-      reps,
-      weight,
-      timestamp: new Date().toISOString(),
-    };
+    reps,
+    weight,
+    unit: settings.weightUnit,        // uses user preference
+    timestamp: new Date().toISOString(),
+  };
 
     setSelectedExercises(prev =>
       prev.map(exercise =>

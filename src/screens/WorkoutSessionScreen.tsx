@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import {
   Alert,
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeProvider';
 import { useWorkout } from '../context/WorkoutContext';
+import { getQuickIncrements, getWeightIncrement } from '../utils/weightConversion';
 
 const formatTime = (seconds: number): string => {
   const minutes = Math.floor(seconds / 60);
@@ -20,8 +20,7 @@ const formatTime = (seconds: number): string => {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
-// Increment/Decrement Component
-// Fixed IncrementInput component in WorkoutSessionScreen.tsx
+// Increment/Decrement Component with unit support
 const IncrementInput: React.FC<{
   value: string;
   onValueChange: (value: string) => void;
@@ -50,7 +49,6 @@ const IncrementInput: React.FC<{
     if (text === '' || /^\d*\.?\d*$/.test(text)) {
       onValueChange(text);
     }
-  
   };
 
   return (
@@ -72,7 +70,7 @@ const IncrementInput: React.FC<{
             borderColor: colors.border,
             color: colors.text 
           }]}
-          value={value} // ✅ This was missing!
+          value={value}
           onChangeText={handleTextChange}
           keyboardType="numeric"
           textAlign="center"
@@ -91,19 +89,17 @@ const IncrementInput: React.FC<{
       </View>
       {suffix && <Text style={[styles.incrementSuffix, { color: colors.textSecondary }]}>{suffix}</Text>}
     </View>
-    
   );
 };
 
-
-// Quick Weight Buttons Component  
+// Quick Weight Buttons Component with unit support
 const QuickWeightButtons: React.FC<{
   currentWeight: string;
   onWeightChange: (weight: string) => void;
-}> = ({ currentWeight, onWeightChange }) => {
+  unit: 'kg' | 'lbs';
+}> = ({ currentWeight, onWeightChange, unit }) => {
   const { colors } = useTheme();
-  
-  const quickIncrements = [2.5, 5, 10, 20];
+  const quickIncrements = getQuickIncrements(unit);
 
   const addWeight = (increment: number) => {
     const current = parseFloat(currentWeight) || 0;
@@ -112,7 +108,7 @@ const QuickWeightButtons: React.FC<{
 
   return (
     <View style={styles.quickButtonsContainer}>
-      <Text style={[styles.quickButtonsLabel, { color: colors.textSecondary }]}>Quick add:</Text>
+      <Text style={[styles.quickButtonsLabel, { color: colors.text }]}>Quick add:</Text>
       <View style={styles.quickButtonsRow}>
         {quickIncrements.map((increment) => (
           <TouchableOpacity
@@ -144,10 +140,11 @@ export default function WorkoutSessionScreen() {
     stopRestTimer,
     workoutStartTime,
     showToast,
+    settings,
   } = useWorkout();
 
-  const { colors, isDark } = useTheme();
-
+  const { colors } = useTheme();
+  
   const [repsInput, setRepsInput] = useState('');
   const [weightInput, setWeightInput] = useState('');
   const [activeExercise, setActiveExercise] = useState<string | null>(null);
@@ -174,27 +171,28 @@ export default function WorkoutSessionScreen() {
   };
 
   const handleFinishWorkout = () => {
-  Alert.alert(
-    'Finish Workout',
-    'Save this workout to your history?',
-    [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Save Workout',
-        onPress: () => {
-          finishWorkout(); // Uses automatic naming like "Workout - 1/7/2025"
-          showToast('Workout saved successfully! 🎉', 'success');
+    Alert.alert(
+      'Finish Workout',
+      'Save this workout to your history?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Save Workout',
+          onPress: () => {
+            finishWorkout();
+            showToast('Workout saved successfully! 🎉', 'success');
+          },
         },
-      },
-    ]
-  );
-};
+      ]
+    );
+  };
 
   const getLastSetInfo = (exerciseName: string): string => {
     const history = getExerciseHistory(exerciseName);
     if (history.length > 0 && history[0].sets.length > 0) {
       const lastSet = history[0].sets[history[0].sets.length - 1];
-      return `Last: ${lastSet.reps} reps @ ${lastSet.weight}kg`;
+      const unit = lastSet.unit || settings.weightUnit;
+      return `Last: ${lastSet.reps} reps @ ${lastSet.weight}${unit}`;
     }
     return 'No previous data';
   };
@@ -210,11 +208,13 @@ export default function WorkoutSessionScreen() {
 
   if (selectedExercises.length === 0) {
     return (
-      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
-        <Text style={[styles.emptyTitle, { color: colors.text }]}>No Exercises Selected</Text>
-        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-          Go to the Exercise Library to add exercises to your workout.
-        </Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Exercises Selected</Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            Go to the Exercise Library to add exercises to your workout.
+          </Text>
+        </View>
       </View>
     );
   }
@@ -231,11 +231,11 @@ export default function WorkoutSessionScreen() {
             </Text>
           )}
         </View>
-        
+
         {/* Rest Timer */}
         {isRestTimerActive && (
-          <View style={[styles.restTimer, { backgroundColor: colors.info + '20', borderColor: colors.info }]}>
-            <Text style={[styles.restTimerText, { color: colors.info }]}>
+          <View style={[styles.restTimer, { backgroundColor: colors.warning, borderColor: colors.border }]}>
+            <Text style={[styles.restTimerText, { color: colors.text }]}>
               Rest: {formatTime(restTimeRemaining)}
             </Text>
             <TouchableOpacity
@@ -258,10 +258,8 @@ export default function WorkoutSessionScreen() {
               <Text style={[styles.exerciseName, { color: colors.text }]}>{item.name}</Text>
               <View style={styles.exerciseActions}>
                 <TouchableOpacity
-                  style={[styles.historyButton, { backgroundColor: colors.primary }]}
-                  onPress={() => 
-                    setShowHistory(showHistory === item.name ? null : item.name)
-                  }
+                  style={[styles.historyButton, { backgroundColor: colors.info }]}
+                  onPress={() => setShowHistory(showHistory === item.name ? null : item.name)}
                 >
                   <Text style={styles.historyButtonText}>
                     {showHistory === item.name ? 'Hide' : 'History'}
@@ -276,31 +274,33 @@ export default function WorkoutSessionScreen() {
                 <Text style={[styles.historyTitle, { color: colors.text }]}>Previous Sessions:</Text>
                 {getExerciseHistory(item.name).slice(0, 3).map((session, index) => (
                   <View key={index} style={styles.historySession}>
-                    <Text style={[styles.historySessionTitle, { color: colors.textSecondary }]}>
+                    <Text style={[styles.historySessionTitle, { color: colors.text }]}>
                       Session {index + 1}:
                     </Text>
                     {session.sets.map((set, setIndex) => (
                       <Text key={setIndex} style={[styles.historySet, { color: colors.textSecondary }]}>
-                        {set.reps} reps @ {set.weight}kg
+                        {set.reps} reps @ {set.weight}{set.unit || settings.weightUnit}
                       </Text>
                     ))}
                   </View>
                 ))}
                 {getExerciseHistory(item.name).length === 0 && (
-                  <Text style={[styles.noHistory, { color: colors.textSecondary }]}>No previous data</Text>
+                  <Text style={[styles.noHistory, { color: colors.textSecondary }]}>
+                    No previous data
+                  </Text>
                 )}
               </View>
             )}
 
             {/* Current Sets */}
             {item.sets.map((set, index) => (
-              <Pressable
+              <TouchableOpacity
                 key={index}
                 style={[styles.setItem, { backgroundColor: colors.background }]}
-                onLongPress={() =>
+                onPress={() =>
                   Alert.alert(
                     `Set ${index + 1}`,
-                    `${set.reps} reps @ ${set.weight}kg`,
+                    `${set.reps} reps @ ${set.weight}${set.unit || settings.weightUnit}`,
                     [
                       {
                         text: 'Edit',
@@ -321,21 +321,23 @@ export default function WorkoutSessionScreen() {
                 }
               >
                 <Text style={[styles.setText, { color: colors.text }]}>
-                  Set {index + 1}: {set.reps} reps @ {set.weight}kg
+                  Set {index + 1}: {set.reps} reps @ {set.weight}{set.unit || settings.weightUnit}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             ))}
 
             {/* Edit Mode */}
             {editMode && editMode.exerciseName === item.name && (
-              <View style={[styles.editContainer, { backgroundColor: colors.warning + '20', borderColor: colors.warning }]}>
+              <View style={[styles.editContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
                 <Text style={[styles.editTitle, { color: colors.text }]}>
                   Editing Set {editMode.setIndex + 1}
                 </Text>
+
                 <View style={styles.enhancedInputColumn}>
                   <IncrementInput
                     value={editReps}
                     onValueChange={setEditReps}
+                    step={1}
                     label="Reps"
                     min={1}
                     max={100}
@@ -343,12 +345,13 @@ export default function WorkoutSessionScreen() {
                   <IncrementInput
                     value={editWeight}
                     onValueChange={setEditWeight}
-                    step={2.5}
+                    step={getWeightIncrement(settings.weightUnit)}
                     label="Weight"
-                    suffix="kg"
+                    suffix={settings.weightUnit}
                     max={500}
                   />
                 </View>
+
                 <View style={styles.editActions}>
                   <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: colors.success }]}
@@ -383,12 +386,19 @@ export default function WorkoutSessionScreen() {
                 <Text style={[styles.lastSetInfo, { color: colors.textSecondary }]}>
                   {getLastSetInfo(item.name)}
                 </Text>
-                
+
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: colors.info }]}
+                  onPress={() => quickFillFromLast(item.name)}
+                >
+                  <Text style={styles.actionButtonText}>Fill Last</Text>
+                </TouchableOpacity>
+
                 <View style={styles.enhancedInputColumn}>
                   <IncrementInput
                     value={repsInput}
                     onValueChange={setRepsInput}
-                    step={1} // ✅ Use step=1 for reps
+                    step={1}
                     label="Reps"
                     min={1}
                     max={100}
@@ -396,26 +406,20 @@ export default function WorkoutSessionScreen() {
                   <IncrementInput
                     value={weightInput}
                     onValueChange={setWeightInput}
-                    step={2.5} // ✅ Use step=2.5 for weight
+                    step={getWeightIncrement(settings.weightUnit)}
                     label="Weight"
-                    suffix="kg"
+                    suffix={settings.weightUnit}
                     max={500}
                   />
                 </View>
 
-
                 <QuickWeightButtons
                   currentWeight={weightInput}
                   onWeightChange={setWeightInput}
+                  unit={settings.weightUnit}
                 />
 
                 <View style={styles.addSetActions}>
-                  <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: colors.textSecondary }]}
-                    onPress={() => quickFillFromLast(item.name)}
-                  >
-                    <Text style={styles.actionButtonText}>Fill Last</Text>
-                  </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: colors.success }]}
                     onPress={() => handleAddSet(item.name)}
@@ -430,9 +434,7 @@ export default function WorkoutSessionScreen() {
               style={[styles.toggleButton, { 
                 backgroundColor: activeExercise === item.name ? colors.textSecondary : colors.primary 
               }]}
-              onPress={() =>
-                setActiveExercise(activeExercise === item.name ? null : item.name)
-              }
+              onPress={() => setActiveExercise(activeExercise === item.name ? null : item.name)}
             >
               <Text style={styles.toggleButtonText}>
                 {activeExercise === item.name ? 'Cancel' : 'Add Set'}
@@ -445,7 +447,7 @@ export default function WorkoutSessionScreen() {
       {/* Bottom Actions */}
       <View style={[styles.bottomActions, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         <TouchableOpacity
-          style={[styles.bottomButton, { backgroundColor: colors.error }]}
+          style={[styles.bottomButton, { backgroundColor: colors.textSecondary }]}
           onPress={clearWorkout}
         >
           <Text style={styles.bottomButtonText}>Clear Workout</Text>
@@ -611,7 +613,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   incrementContainer: {
-    flex: 1,
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
@@ -647,6 +648,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     paddingHorizontal: 8,
+    textAlign: 'center',
   },
   incrementSuffix: {
     fontSize: 10,

@@ -13,6 +13,8 @@ import {
 import { ThemeMode, useTheme } from '../context/ThemeProvider';
 import { useWorkout } from '../context/WorkoutContext';
 
+type WeightUnit = 'kg' | 'lbs';
+
 const SettingsScreen: React.FC = () => {
   const { settings, updateSettings } = useWorkout();
   const { colors, themeMode, setThemeMode, isDark } = useTheme();
@@ -22,12 +24,17 @@ const SettingsScreen: React.FC = () => {
     updateSettings({ theme: mode });
   };
 
+  const handleUnitChange = (unit: WeightUnit) => {
+    updateSettings({ weightUnit: unit });
+  };
+
   const formatTime = (seconds: number): string => {
     const minutes = seconds / 60;
     return `${minutes} min`;
   };
 
   const restTimerOptions = [60, 90, 120, 180, 240, 300]; // 1, 1.5, 2, 3, 4, 5 minutes
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
@@ -65,6 +72,45 @@ const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* Units Section */}
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Units</Text>
+          
+          <View style={styles.settingRow}>
+            <View>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>Weight Unit</Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Choose your preferred weight measurement
+              </Text>
+            </View>
+            <View style={styles.unitButtons}>
+              {(['kg', 'lbs'] as WeightUnit[]).map((unit) => (
+                <TouchableOpacity
+                  key={unit}
+                  style={[
+                    styles.unitButton,
+                    {
+                      backgroundColor: settings.weightUnit === unit ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => handleUnitChange(unit)}
+                >
+                  <Text
+                    style={[
+                      styles.unitButtonText,
+                      {
+                        color: settings.weightUnit === unit ? '#fff' : colors.text,
+                      },
+                    ]}
+                  >
+                    {unit.toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
         {/* Workout Settings */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Workout</Text>
@@ -83,25 +129,30 @@ const SettingsScreen: React.FC = () => {
 
           <View style={styles.restTimerOptions}>
             {restTimerOptions.map((duration) => (
-            <TouchableOpacity
-              key={duration} // ✅ Ensure unique keys
-              style={[styles.restTimerOption, {
-                backgroundColor: settings.restTimerDuration === duration 
-                  ? colors.primary : colors.border,
-              }]}
-              onPress={() => updateSettings({ restTimerDuration: duration })}
-            >
-              <Text style={[styles.restTimerOptionText, {
-                color: settings.restTimerDuration === duration 
-                  ? '#fff' : colors.text,
-              }]}>
-                {formatTime(duration)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-
-
-            
+              <TouchableOpacity
+                key={duration}
+                style={[
+                  styles.restTimerOption,
+                  {
+                    backgroundColor: settings.restTimerDuration === duration 
+                      ? colors.primary : colors.border,
+                  },
+                ]}
+                onPress={() => updateSettings({ restTimerDuration: duration })}
+              >
+                <Text
+                  style={[
+                    styles.restTimerOptionText,
+                    {
+                      color: settings.restTimerDuration === duration 
+                        ? '#fff' : colors.text,
+                    },
+                  ]}
+                >
+                  {formatTime(duration)}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -148,7 +199,7 @@ const SettingsScreen: React.FC = () => {
             style={styles.settingRow}
             onPress={() => Alert.alert(
               'Workout Tracker v1.0',
-              'A minimalist workout logging app designed for serious lifters.\\n\\nFeatures:\\n• Offline-first data storage\\n• Exercise history tracking\\n• Customizable rest timers\\n• Dark mode support\\n• CSV data export',
+              'A minimalist workout logging app designed for serious lifters.\n\nFeatures:\n• Offline-first data storage\n• Custom exercises creation\n• Unit conversion (kg/lbs)\n• Exercise history tracking\n• Customizable rest timers\n• Dark mode support\n• CSV data export',
               [{ text: 'OK' }]
             )}
           >
@@ -205,6 +256,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   themeButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  unitButtons: {
+    flexDirection: 'column',
+    gap: 8,
+  },
+  unitButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  unitButtonText: {
     fontSize: 12,
     fontWeight: '600',
   },

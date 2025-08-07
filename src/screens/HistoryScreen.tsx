@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import {
   Alert,
   FlatList,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,9 +12,10 @@ import {
 import { useTheme } from '../context/ThemeProvider';
 import type { Workout } from '../context/WorkoutContext';
 import { useWorkout } from '../context/WorkoutContext';
+import { csvForWorkout, exportCSV } from '../utils/exportUtils';
 
 export default function HistoryScreen() {
-  const { workoutHistory } = useWorkout();
+  const { workoutHistory, showToast, settings } = useWorkout();
   const { colors } = useTheme();
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
 
@@ -50,53 +50,52 @@ export default function HistoryScreen() {
     );
   };
 
-  const exportWorkoutToCSV = (workout: Workout) => {
-    let csvContent = 'Exercise,Set,Reps,Weight (kg),Volume (kg),Timestamp\\n';
-    
-    workout.exercises.forEach(exercise => {
-      exercise.sets.forEach((set, index) => {
-        const volume = set.reps * set.weight;
-        const timestamp = new Date(set.timestamp).toLocaleString();
-        csvContent += `"${exercise.name}",${index + 1},${set.reps},${set.weight},${volume},"${timestamp}"\\n`;
-      });
-    });
-
-    // Add workout summary
-    csvContent += '\\n--- Workout Summary ---\\n';
-    csvContent += `Workout Name,"${workout.name}"\\n`;
-    csvContent += `Date,"${formatDate(workout.date)}"\\n`;
-    csvContent += `Duration (minutes),${workout.duration || 'N/A'}\\n`;
-    csvContent += `Total Sets,${getTotalSets(workout)}\\n`;
-    csvContent += `Total Volume (kg),${getTotalWeight(workout)}\\n`;
-
-    Share.share({
-      message: csvContent,
-      title: `${workout.name} - Workout Data`,
-    });
+  // Export a single workout as CSV and share
+  const exportWorkoutToFile = async (workout: Workout) => {
+    try {
+      const csvContent = csvForWorkout(workout);
+      const safeName = workout?.name?.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9-_]/g, '');
+      const filename = `workout_${safeName}_${Date.now()}.csv`;
+      const fileUri = await exportCSV(filename, csvContent);
+      showToast(`Workout exported: ${filename}`, 'success');
+      return fileUri;
+    } catch (error) {
+      console.error('Failed to export workout:', error);
+      showToast('Failed to export workout', 'error');
+    }
   };
 
-  const exportAllWorkoutsToCSV = () => {
-    if (workoutHistory.length === 0) {
-      Alert.alert('No Data', 'No workout history to export.');
-      return;
-    }
+  // Export all workouts combined into a single CSV file
+  const exportAllWorkoutsToFile = async () => {
+    try {
+      if (workoutHistory.length === 0) {
+        showToast('No workout history to export', 'info');
+        return;
+      }
 
-    let csvContent = 'Date,Workout Name,Exercise,Set,Reps,Weight (kg),Volume (kg),Duration (min)\\n';
-    
-    workoutHistory.forEach(workout => {
-      workout.exercises.forEach(exercise => {
-        exercise.sets.forEach((set, index) => {
-          const volume = set.reps * set.weight;
-          const workoutDate = new Date(workout.date).toLocaleDateString();
-          csvContent += `"${workoutDate}","${workout.name}","${exercise.name}",${index + 1},${set.reps},${set.weight},${volume},${workout.duration || 'N/A'}\\n`;
-        });
+      const combinedCsvLines: string[] = [];
+
+      workoutHistory.forEach((workout, index) => {
+        const csv = csvForWorkout(workout);
+        combinedCsvLines.push(csv);
+        if (index !== workoutHistory.length - 1) combinedCsvLines.push(''); // Blank line between workouts
       });
-    });
 
-    Share.share({
-      message: csvContent,
-      title: 'All Workouts Data',
-    });
+      const combinedCsv = combinedCsvLines.join('\n');
+      const filename = `all_workouts_${Date.now()}.csv`;
+      const fileUri = await exportCSV(filename, combinedCsv);
+      showToast(`All workouts exported: ${filename}`, 'success');
+      return fileUri;
+    } catch (error) {
+      console.error('Failed to export all workouts:', error);
+      showToast('Failed to export all workouts', 'error');
+    }
+  };
+
+  // Placeholder for progress report export
+  // You can implement generateProgressReport & exportToFile similar to above
+  const exportProgressReport = async () => {
+    showToast('Progress report feature is under development.', 'info');
   };
 
   const renderWorkoutItem = ({ item }: { item: Workout }) => (
@@ -105,11 +104,11 @@ export default function HistoryScreen() {
       onPress={() => setSelectedWorkout(selectedWorkout?.id === item.id ? null : item)}
       onLongPress={() =>
         Alert.alert(
-          'Export Workout',
-          'Would you like to export this workout data?',
+          'Workout Actions',
+          `What would you like to do with "${item.name}"?`,
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Export CSV', onPress: () => exportWorkoutToCSV(item) },
+            { text: 'Export Workout', onPress: () => exportWorkoutToFile(item) },
           ]
         )
       }
@@ -138,28 +137,30 @@ export default function HistoryScreen() {
       {selectedWorkout?.id === item.id && (
         <View style={[styles.workoutDetails, { borderTopColor: colors.border }]}>
           <Text style={[styles.detailsTitle, { color: colors.text }]}>Workout Details:</Text>
-        
           {item.exercises.map((exercise, exerciseIndex) => (
             <View key={exerciseIndex} style={styles.exerciseDetail}>
-              <Text style={styles.exerciseDetailName}>{exercise.name}</Text>
+              <Text style={[styles.exerciseDetailName, { color: colors.text }]}>
+                {exercise.name}
+              </Text>
               {exercise.sets.map((set, setIndex) => (
-                <Text key={setIndex} style={styles.setDetail}>
-                  Set {setIndex + 1}: {set.reps} reps @ {set.weight}kg
-                  {' '}(Volume: {(set.reps * set.weight).toFixed(1)}kg)
+                <Text key={setIndex} style={[styles.setDetail, { color: colors.textSecondary }]}>
+                  Set {setIndex + 1}: {set.reps} reps @ {set.weight}{set.unit || settings.weightUnit}
+                  {' '}(Volume: {(set.reps * set.weight).toFixed(1)}{set.unit || settings.weightUnit})
                 </Text>
               ))}
             </View>
           ))}
-          <View style={styles.workoutSummary}>
-            <Text style={styles.summaryTitle}>Summary:</Text>
-            <Text style={styles.summaryText}>
-              Total Volume: {getTotalWeight(item).toFixed(1)}kg
+
+          <View style={[styles.workoutSummary, { backgroundColor: colors.background }]}>
+            <Text style={[styles.summaryTitle, { color: colors.text }]}>Summary:</Text>
+            <Text style={[styles.summaryText, { color: colors.text }]}>
+              Total Volume: {getTotalWeight(item).toFixed(1)}{settings.weightUnit}
             </Text>
-            <Text style={styles.summaryText}>
+            <Text style={[styles.summaryText, { color: colors.text }]}>
               Total Sets: {getTotalSets(item)}
             </Text>
             {item.duration && (
-              <Text style={styles.summaryText}>
+              <Text style={[styles.summaryText, { color: colors.text }]}>
                 Duration: {item.duration} minutes
               </Text>
             )}
@@ -171,11 +172,13 @@ export default function HistoryScreen() {
 
   if (workoutHistory.length === 0) {
     return (
-      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
-        <Text style={[styles.emptyTitle, { color: colors.text }]}>No Workout History</Text>
-        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-          Complete your first workout to see it here!
-        </Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Workout History</Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            Complete your first workout to see it here!
+          </Text>
+        </View>
       </View>
     );
   }
@@ -184,11 +187,22 @@ export default function HistoryScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Workout History</Text>
+
         <TouchableOpacity
           style={[styles.exportButton, { backgroundColor: colors.primary }]}
-          onPress={exportAllWorkoutsToCSV}
+          onPress={() =>
+            Alert.alert(
+              'Export Options',
+              'Choose what to export:',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'All Workouts', onPress: exportAllWorkoutsToFile },
+                { text: 'Progress Report', onPress: exportProgressReport },
+              ]
+            )
+          }
         >
-          <Text style={styles.exportButtonText}>Export All</Text>
+          <Text style={styles.exportButtonText}>Export</Text>
         </TouchableOpacity>
       </View>
 
@@ -207,7 +221,7 @@ export default function HistoryScreen() {
           <Text style={[styles.statNumber, { color: colors.primary }]}>
             {workoutHistory
               .reduce((total, workout) => total + getTotalWeight(workout), 0)
-              .toFixed(0)}kg
+              .toFixed(0)}{settings.weightUnit}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Volume</Text>
         </View>
@@ -224,27 +238,22 @@ export default function HistoryScreen() {
   );
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
   },
   exportButton: {
-    backgroundColor: '#007AFF',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 6,
@@ -255,11 +264,9 @@ const styles = StyleSheet.create({
   },
   statsBar: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   statItem: {
     flex: 1,
@@ -268,11 +275,9 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#007AFF',
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
     marginTop: 2,
   },
   listContainer: {
@@ -292,10 +297,8 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     textAlign: 'center',
-    color: '#666',
   },
   workoutCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -321,14 +324,12 @@ const styles = StyleSheet.create({
   },
   workoutDate: {
     fontSize: 14,
-    color: '#666',
   },
   workoutStats: {
     alignItems: 'flex-end',
   },
   statText: {
     fontSize: 12,
-    color: '#007AFF',
     fontWeight: '600',
   },
   exercisesSummary: {
@@ -336,14 +337,12 @@ const styles = StyleSheet.create({
   },
   exerciseSummary: {
     fontSize: 14,
-    color: '#333',
     marginBottom: 2,
   },
   workoutDetails: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
   },
   detailsTitle: {
     fontSize: 16,
@@ -360,14 +359,12 @@ const styles = StyleSheet.create({
   },
   setDetail: {
     fontSize: 13,
-    color: '#666',
     marginLeft: 8,
     marginBottom: 2,
   },
   workoutSummary: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: '#f8f9fa',
     borderRadius: 8,
   },
   summaryTitle: {
@@ -377,7 +374,6 @@ const styles = StyleSheet.create({
   },
   summaryText: {
     fontSize: 13,
-    color: '#333',
     marginBottom: 2,
   },
 });
