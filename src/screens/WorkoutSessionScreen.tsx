@@ -174,28 +174,21 @@ export default function WorkoutSessionScreen() {
   };
 
   const handleFinishWorkout = () => {
-    Alert.alert(
-      'Finish Workout',
-      'Are you sure you want to finish this workout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Finish',
-          onPress: () => {
-            Alert.prompt(
-              'Name Your Workout',
-              'Give your workout a name (optional):',
-              [
-                { text: 'Skip', onPress: () => finishWorkout() },
-                { text: 'Save', onPress: (name) => finishWorkout(name) },
-              ],
-              'plain-text'
-            );
-          },
+  Alert.alert(
+    'Finish Workout',
+    'Save this workout to your history?',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Save Workout',
+        onPress: () => {
+          finishWorkout(); // Uses automatic naming like "Workout - 1/7/2025"
+          showToast('Workout saved successfully! 🎉', 'success');
         },
-      ]
-    );
-  };
+      },
+    ]
+  );
+};
 
   const getLastSetInfo = (exerciseName: string): string => {
     const history = getExerciseHistory(exerciseName);
