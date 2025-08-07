@@ -339,7 +339,7 @@ export default function WorkoutSessionScreen() {
                 <Text style={[styles.editTitle, { color: colors.text }]}>
                   Editing Set {editMode.setIndex + 1}
                 </Text>
-                <View style={styles.enhancedInputRow}>
+                <View style={styles.enhancedInputColumn}>
                   <IncrementInput
                     value={editReps}
                     onValueChange={setEditReps}
@@ -391,7 +391,7 @@ export default function WorkoutSessionScreen() {
                   {getLastSetInfo(item.name)}
                 </Text>
                 
-                <View style={styles.enhancedInputRow}>
+                <View style={styles.enhancedInputColumn}>
                   <IncrementInput
                     value={repsInput}
                     onValueChange={setRepsInput}
@@ -612,8 +612,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 12,
   },
-  enhancedInputRow: {
-    flexDirection: 'row',
+  enhancedInputColumn: {
+    flexDirection: 'column',
     gap: 16,
     marginBottom: 16,
   },
