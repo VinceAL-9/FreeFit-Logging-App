@@ -1,5 +1,3 @@
-// src/screens/HistoryScreen.tsx
-
 import React, { useState } from 'react';
 import {
   Alert,
@@ -17,363 +15,259 @@ import { csvForWorkout, exportCSV } from '../utils/exportUtils';
 export default function HistoryScreen() {
   const { workoutHistory, showToast, settings } = useWorkout();
   const { colors } = useTheme();
-  const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString('en-US', {
       weekday: 'short',
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
-  };
 
-  const formatTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
+  const fmtTime = (d: string) =>
+    new Date(d).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
     });
+
+  const totalSets = (w: Workout) =>
+    w.exercises.reduce((t, ex) => t + ex.sets.length, 0);
+
+  const totalWt = (w: Workout) =>
+    w.exercises.reduce(
+      (tot, ex) =>
+        tot + ex.sets.reduce((stTot, s) => stTot + s.weight * s.reps, 0),
+      0,
+    );
+
+  /* exports */
+  const exportOne = async (w: Workout) => {
+    try {
+      const csv = csvForWorkout(w);
+      const name = w.name?.replace(/\s+/g, '_').replace(/[^a-z0-9-_]/gi, '');
+      const file = `workout_${name}_${Date.now()}.csv`;
+      await exportCSV(file, csv);
+      showToast(`Exported ${file}`, 'success');
+    } catch (e) {
+      console.error(e);
+      showToast('Export failed', 'error');
+    }
   };
 
-  const getTotalSets = (workout: Workout): number => {
-    return workout.exercises.reduce((total, exercise) => total + exercise.sets.length, 0);
+  const exportAll = async () => {
+    if (!workoutHistory.length) {
+      showToast('No workouts to export', 'info');
+      return;
+    }
+    try {
+      const csv = workoutHistory
+        .map(csvForWorkout)
+        .join('\n\n'); /* blank line between workouts */
+      const file = `all_workouts_${Date.now()}.csv`;
+      await exportCSV(file, csv);
+      showToast(`Exported ${file}`, 'success');
+    } catch (e) {
+      console.error(e);
+      showToast('Export failed', 'error');
+    }
   };
 
-  const getTotalWeight = (workout: Workout): number => {
-    return workout.exercises.reduce(
-      (total, exercise) =>
-        total +
-        exercise.sets.reduce((exerciseTotal, set) => exerciseTotal + set.weight * set.reps, 0),
-      0
+  /* render one card */
+  const Card = ({ item }: { item: Workout }) => {
+    const expanded = selected === item.id;
+    return (
+      <TouchableOpacity
+        style={[styles.card, { backgroundColor: colors.surface }]}
+        onPress={() => setSelected(expanded ? null : item.id)}
+        onLongPress={() =>
+          Alert.alert('Workout', 'Export this workout?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Export', onPress: () => exportOne(item) },
+          ])
+        }
+      >
+        {/* header row */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.workoutName, { color: colors.text }]}>
+              {item.name}
+            </Text>
+            <Text style={[styles.workoutDate, { color: colors.textSecondary }]}>
+              {fmtDate(item.date)}  {fmtTime(item.date)}
+            </Text>
+          </View>
+          <View style={styles.headerRight}>
+            <Text style={[styles.statText, { color: colors.primary }]}>
+              {totalSets(item)} sets
+            </Text>
+            {item.duration ? (
+              <Text style={[styles.statText, { color: colors.primary }]}>
+                {item.duration}m
+              </Text>
+            ) : null}
+          </View>
+        </View>
+
+        {/* short list of exercises */}
+        <View style={styles.exerciseRow}>
+          {item.exercises.map((ex, i) => (
+            <Text
+              key={i}
+              style={[styles.exerciseText, { color: colors.text }]}
+            >
+              {ex.name} ({ex.sets.length})
+            </Text>
+          ))}
+        </View>
+
+        {/* expanded details */}
+        {expanded && (
+          <View style={[styles.detailsBox, { borderTopColor: colors.border }]}>
+            {item.exercises.map((ex, exIdx) => (
+              <View key={exIdx} style={styles.detailSection}>
+                <Text
+                  style={[styles.detailHeader, { color: colors.text }]}
+                >
+                  {ex.name}
+                </Text>
+                {ex.sets.map((s, i) => (
+                  <Text
+                    key={i}
+                    style={[styles.setLine, { color: colors.textSecondary }]}
+                  >
+                    Set {i + 1}: {s.reps} × {s.weight}
+                    {s.unit}   Vol: {(s.reps * s.weight).toFixed(1)}
+                    {s.unit}
+                  </Text>
+                ))}
+              </View>
+            ))}
+
+            <View style={[styles.summaryBox, { backgroundColor: colors.background }]}>
+              <Text style={[styles.summaryText, { color: colors.text }]}>
+                Total Volume: {totalWt(item).toFixed(1)}
+                {settings.weightUnit}
+              </Text>
+              <Text style={[styles.summaryText, { color: colors.text }]}>
+                Total Sets: {totalSets(item)}
+              </Text>
+              {item.duration ? (
+                <Text style={[styles.summaryText, { color: colors.text }]}>
+                  Duration: {item.duration} min
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
-  // Export a single workout as CSV and share
-  const exportWorkoutToFile = async (workout: Workout) => {
-    try {
-      const csvContent = csvForWorkout(workout);
-      const safeName = workout?.name?.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9-_]/g, '');
-      const filename = `workout_${safeName}_${Date.now()}.csv`;
-      const fileUri = await exportCSV(filename, csvContent);
-      showToast(`Workout exported: ${filename}`, 'success');
-      return fileUri;
-    } catch (error) {
-      console.error('Failed to export workout:', error);
-      showToast('Failed to export workout', 'error');
-    }
-  };
-
-  // Export all workouts combined into a single CSV file
-  const exportAllWorkoutsToFile = async () => {
-    try {
-      if (workoutHistory.length === 0) {
-        showToast('No workout history to export', 'info');
-        return;
-      }
-
-      const combinedCsvLines: string[] = [];
-
-      workoutHistory.forEach((workout, index) => {
-        const csv = csvForWorkout(workout);
-        combinedCsvLines.push(csv);
-        if (index !== workoutHistory.length - 1) combinedCsvLines.push(''); // Blank line between workouts
-      });
-
-      const combinedCsv = combinedCsvLines.join('\n');
-      const filename = `all_workouts_${Date.now()}.csv`;
-      const fileUri = await exportCSV(filename, combinedCsv);
-      showToast(`All workouts exported: ${filename}`, 'success');
-      return fileUri;
-    } catch (error) {
-      console.error('Failed to export all workouts:', error);
-      showToast('Failed to export all workouts', 'error');
-    }
-  };
-
-  // Placeholder for progress report export
-  // You can implement generateProgressReport & exportToFile similar to above
-  const exportProgressReport = async () => {
-    showToast('Progress report feature is under development.', 'info');
-  };
-
-  const renderWorkoutItem = ({ item }: { item: Workout }) => (
-    <TouchableOpacity
-      style={[styles.workoutCard, { backgroundColor: colors.surface }]}
-      onPress={() => setSelectedWorkout(selectedWorkout?.id === item.id ? null : item)}
-      onLongPress={() =>
-        Alert.alert(
-          'Workout Actions',
-          `What would you like to do with "${item.name}"?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Export Workout', onPress: () => exportWorkoutToFile(item) },
-          ]
-        )
-      }
-    >
-      <View style={styles.workoutHeader}>
-        <View style={styles.workoutInfo}>
-          <Text style={[styles.workoutName, { color: colors.text }]}>{item.name}</Text>
-          <Text style={[styles.workoutDate, { color: colors.textSecondary }]}>
-            {formatDate(item.date)} at {formatTime(item.date)}
-          </Text>
-        </View>
-        <View style={styles.workoutStats}>
-          <Text style={[styles.statText, { color: colors.primary }]}>{getTotalSets(item)} sets</Text>
-          {item.duration && <Text style={[styles.statText, { color: colors.primary }]}>{item.duration}m</Text>}
-        </View>
-      </View>
-
-      <View style={styles.exercisesSummary}>
-        {item.exercises.map((exercise, index) => (
-          <Text key={index} style={[styles.exerciseSummary, { color: colors.text }]}>
-            {exercise.name} ({exercise.sets.length} sets)
-          </Text>
-        ))}
-      </View>
-
-      {selectedWorkout?.id === item.id && (
-        <View style={[styles.workoutDetails, { borderTopColor: colors.border }]}>
-          <Text style={[styles.detailsTitle, { color: colors.text }]}>Workout Details:</Text>
-          {item.exercises.map((exercise, exerciseIndex) => (
-            <View key={exerciseIndex} style={styles.exerciseDetail}>
-              <Text style={[styles.exerciseDetailName, { color: colors.text }]}>
-                {exercise.name}
-              </Text>
-              {exercise.sets.map((set, setIndex) => (
-                <Text key={setIndex} style={[styles.setDetail, { color: colors.textSecondary }]}>
-                  Set {setIndex + 1}: {set.reps} reps @ {set.weight}{set.unit || settings.weightUnit}
-                  {' '}(Volume: {(set.reps * set.weight).toFixed(1)}{set.unit || settings.weightUnit})
-                </Text>
-              ))}
-            </View>
-          ))}
-
-          <View style={[styles.workoutSummary, { backgroundColor: colors.background }]}>
-            <Text style={[styles.summaryTitle, { color: colors.text }]}>Summary:</Text>
-            <Text style={[styles.summaryText, { color: colors.text }]}>
-              Total Volume: {getTotalWeight(item).toFixed(1)}{settings.weightUnit}
-            </Text>
-            <Text style={[styles.summaryText, { color: colors.text }]}>
-              Total Sets: {getTotalSets(item)}
-            </Text>
-            {item.duration && (
-              <Text style={[styles.summaryText, { color: colors.text }]}>
-                Duration: {item.duration} minutes
-              </Text>
-            )}
-          </View>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-
-  if (workoutHistory.length === 0) {
+  /* empty list */
+  if (!workoutHistory.length) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Workout History</Text>
+        <View style={styles.emptyBox}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            No Workout History
+          </Text>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            Complete your first workout to see it here!
+            Complete your first workout to see it here.
           </Text>
         </View>
       </View>
     );
   }
 
+  /* main list */
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Workout History</Text>
-
+      {/* top bar */}
+      <View style={[styles.topBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Text style={[styles.topTitle, { color: colors.text }]}>Workout History</Text>
         <TouchableOpacity
-          style={[styles.exportButton, { backgroundColor: colors.primary }]}
+          style={[styles.exportBtn, { backgroundColor: colors.primary }]}
           onPress={() =>
-            Alert.alert(
-              'Export Options',
-              'Choose what to export:',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'All Workouts', onPress: exportAllWorkoutsToFile },
-                { text: 'Progress Report', onPress: exportProgressReport },
-              ]
-            )
+            Alert.alert('Export', 'Choose export option', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'All Workouts', onPress: exportAll },
+            ])
           }
         >
-          <Text style={styles.exportButtonText}>Export</Text>
+          <Text style={styles.exportText}>Export</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.statsBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: colors.primary }]}>{workoutHistory.length}</Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Workouts</Text>
-        </View>
-        <View style={styles.statItem}>
+      {/* stat bar */}
+      <View style={[styles.statBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <View style={styles.statCol}>
           <Text style={[styles.statNumber, { color: colors.primary }]}>
-            {workoutHistory.reduce((total, workout) => total + getTotalSets(workout), 0)}
+            {workoutHistory.length}
           </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Sets</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            Workouts
+          </Text>
         </View>
-        <View style={styles.statItem}>
+        <View style={styles.statCol}>
+          <Text style={[styles.statNumber, { color: colors.primary }]}>
+            {workoutHistory.reduce((t, w) => t + totalSets(w), 0)}
+          </Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            Sets
+          </Text>
+        </View>
+        <View style={styles.statCol}>
           <Text style={[styles.statNumber, { color: colors.primary }]}>
             {workoutHistory
-              .reduce((total, workout) => total + getTotalWeight(workout), 0)
-              .toFixed(0)}{settings.weightUnit}
+              .reduce((t, w) => t + totalWt(w), 0)
+              .toFixed(0)}
+            {settings.weightUnit}
           </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Volume</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            Volume
+          </Text>
         </View>
       </View>
 
       <FlatList
         data={workoutHistory}
-        renderItem={renderWorkoutItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
+        keyExtractor={(w) => w.id}
+        renderItem={Card}
+        contentContainerStyle={styles.listWrap}
       />
     </View>
   );
 }
 
+/* ---- styles (only key class names shown; keep rest of your previous style block) ---- */
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  exportButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  exportButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  statsBar: {
-    flexDirection: 'row',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  statLabel: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  listContainer: {
-    padding: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  emptyText: {
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  workoutCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  workoutHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  workoutInfo: {
-    flex: 1,
-  },
-  workoutName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  workoutDate: {
-    fontSize: 14,
-  },
-  workoutStats: {
-    alignItems: 'flex-end',
-  },
-  statText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  exercisesSummary: {
-    marginTop: 8,
-  },
-  exerciseSummary: {
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  workoutDetails: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-  },
-  detailsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  exerciseDetail: {
-    marginBottom: 12,
-  },
-  exerciseDetailName: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  setDetail: {
-    fontSize: 13,
-    marginLeft: 8,
-    marginBottom: 2,
-  },
-  workoutSummary: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 8,
-  },
-  summaryTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  summaryText: {
-    fontSize: 13,
-    marginBottom: 2,
-  },
+  container: { flex: 1 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1 },
+  topTitle: { fontSize: 24, fontWeight: 'bold' },
+  exportBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
+  exportText: { color: '#fff', fontWeight: '600' },
+  statBar: { flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
+  statCol: { flex: 1, alignItems: 'center' },
+  statNumber: { fontSize: 20, fontWeight: 'bold' },
+  statLabel: { fontSize: 12 },
+  listWrap: { padding: 16 },
+  card: { borderRadius: 12, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  headerLeft: { flex: 1 },
+  headerRight: { alignItems: 'flex-end' },
+  workoutName: { fontSize: 18, fontWeight: 'bold' },
+  workoutDate: { fontSize: 14 },
+  statText: { fontSize: 12, fontWeight: '600' },
+  exerciseRow: { marginTop: 8 },
+  exerciseText: { fontSize: 14, marginBottom: 2 },
+  detailsBox: { marginTop: 12, paddingTop: 12, borderTopWidth: 1 },
+  detailSection: { marginBottom: 8 },
+  detailHeader: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  setLine: { fontSize: 13, marginLeft: 8 },
+  summaryBox: { marginTop: 8, padding: 8, borderRadius: 8 },
+  summaryText: { fontSize: 13 },
+  emptyBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  emptyTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 8 },
+  emptyText: { fontSize: 16, textAlign: 'center' },
 });

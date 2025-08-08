@@ -367,7 +367,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
       }
     });
-    return history.slice(0, 5); // Return last 5 sessions
+    return history.slice(0, 20); // Return last 20 sessions
   };
 
   // Cleanup timers on unmount
