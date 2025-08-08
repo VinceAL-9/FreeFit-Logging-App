@@ -11,8 +11,9 @@ import {
 import { useTheme } from '../context/ThemeProvider';
 import { useWorkout } from '../context/WorkoutContext';
 import {
+  calculateSetVolume,
   getQuickIncrements,
-  getWeightIncrement,
+  getWeightIncrement
 } from '../utils/weightConversion';
 
 const formatTime = (secs: number) => {
@@ -22,7 +23,6 @@ const formatTime = (secs: number) => {
 };
 
 /* ---------- Unit Toggle ---------- */
-
 const UnitToggle: React.FC<{
   unit: 'kg' | 'lbs';
   onUnitChange: (u: 'kg' | 'lbs') => void;
@@ -36,8 +36,7 @@ const UnitToggle: React.FC<{
           style={[
             styles.unitToggleButton,
             {
-              backgroundColor:
-                unit === u ? colors.primary : colors.background,
+              backgroundColor: unit === u ? colors.primary : colors.background,
               borderColor: colors.border,
             },
           ]}
@@ -58,7 +57,6 @@ const UnitToggle: React.FC<{
 };
 
 /* ---------- Increment Input ---------- */
-
 const IncrementInput: React.FC<{
   value: string;
   onValueChange: (v: string) => void;
@@ -143,7 +141,6 @@ const IncrementInput: React.FC<{
 };
 
 /* ---------- Quick Buttons ---------- */
-
 const QuickWeightButtons: React.FC<{
   currentWeight: string;
   onWeightChange: (v: string) => void;
@@ -177,7 +174,6 @@ const QuickWeightButtons: React.FC<{
 };
 
 /* ---------- Screen ---------- */
-
 export default function WorkoutSessionScreen() {
   const {
     selectedExercises,
@@ -214,12 +210,13 @@ export default function WorkoutSessionScreen() {
   const lastSetInfo = (name: string) => {
   const hist = getExerciseHistory(name);
     if (hist.length > 0 && hist[0].sets.length > 0) {
-      const session = hist[0];
+      const session = hist[0];                      // Access first element of array
       const ls = session.sets[session.sets.length - 1];
       return `Last: ${ls.reps} reps @ ${ls.weight}${ls.unit}`;
     }
     return 'No previous data';
   };
+
 
 
   /* actions */
@@ -267,7 +264,7 @@ export default function WorkoutSessionScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <View>
+        <View style={styles.workoutInfo}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Current Workout</Text>
           {workoutStartTime && (
             <Text style={[styles.workoutDuration, { color: colors.textSecondary }]}>
@@ -331,8 +328,7 @@ export default function WorkoutSessionScreen() {
                           key={si}
                           style={[styles.historySet, { color: colors.textSecondary }]}
                         >
-                          {st.reps} reps @ {st.weight}
-                          {st.unit}
+                          {st.reps} reps @ {st.weight}{st.unit}
                         </Text>
                       ))}
                     </View>
@@ -346,40 +342,52 @@ export default function WorkoutSessionScreen() {
               )}
 
               {/* current sets list */}
-              {item.sets.map((st, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={[styles.setItem, { backgroundColor: colors.background }]}
-                  onPress={() =>
-                    Alert.alert(
-                      `Set ${idx + 1}`,
-                      `${st.reps} reps @ ${st.weight}${st.unit}`,
-                      [
-                        {
-                          text: 'Edit',
-                          onPress: () => {
-                            setEditMode({ exerciseName: item.name, setIndex: idx });
-                            setEditReps(st.reps.toString());
-                            setEditWt(st.weight.toString());
-                            setEditUnit(st.unit);
+              {item.sets.map((st, idx) => {
+                // Calculate volume in user's preferred unit for display
+                const setVolumeInPreferredUnit = calculateSetVolume(
+                  st.reps, 
+                  st.weight, 
+                  st.unit, 
+                  settings.weightUnit
+                );
+
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[styles.setItem, { backgroundColor: colors.background }]}
+                    onPress={() =>
+                      Alert.alert(
+                        `Set ${idx + 1}`,
+                        `${st.reps} reps @ ${st.weight}${st.unit} (Vol: ${setVolumeInPreferredUnit.toFixed(1)}${settings.weightUnit})`,
+                        [
+                          {
+                            text: 'Edit',
+                            onPress: () => {
+                              setEditMode({ exerciseName: item.name, setIndex: idx });
+                              setEditReps(st.reps.toString());
+                              setEditWt(st.weight.toString());
+                              setEditUnit(st.unit);
+                            },
                           },
-                        },
-                        {
-                          text: 'Delete',
-                          style: 'destructive',
-                          onPress: () => removeSetFromExercise(item.name, idx),
-                        },
-                        { text: 'Cancel', style: 'cancel' },
-                      ],
-                    )
-                  }
-                >
-                  <Text style={[styles.setText, { color: colors.text }]}>
-                    Set {idx + 1}: {st.reps} reps @ {st.weight}
-                    {st.unit}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: () => removeSetFromExercise(item.name, idx),
+                          },
+                          { text: 'Cancel', style: 'cancel' },
+                        ],
+                      )
+                    }
+                  >
+                    <Text style={[styles.setText, { color: colors.text }]}>
+                      Set {idx + 1}: {st.reps} reps @ {st.weight}{st.unit}
+                      <Text style={[styles.setText, { color: colors.textSecondary, fontSize: 12 }]}>
+                        {' '}(Vol: {setVolumeInPreferredUnit.toFixed(1)}{settings.weightUnit})
+                      </Text>
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
 
               {/* edit mode */}
               {isEditing && (
@@ -448,20 +456,20 @@ export default function WorkoutSessionScreen() {
                   </Text>
 
                   <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: colors.info }]}
-                    onPress={() => {
-                      const h = getExerciseHistory(item.name);
-                      if (h.length > 0 && h[0].sets.length > 0) {
-                        const session = h[0];
-                        const ls = session.sets[session.sets.length - 1];
-                        setReps(ls.reps.toString());
-                        setWt(ls.weight.toString());
-                        setAddUnit(ls.unit);
-                      }
-                    }}
-                    >
-                    <Text style={styles.actionButtonText}>Fill Last</Text>
-                  </TouchableOpacity>
+                      style={[styles.actionButton, { backgroundColor: colors.info }]}
+                      onPress={() => {
+                        const h = getExerciseHistory(item.name);
+                        if (h.length > 0 && h[0].sets.length > 0) {
+                          const session = h[0];                         // Access first exercise in array
+                          const ls = session.sets[session.sets.length - 1];
+                          setReps(ls.reps.toString());
+                          setWt(ls.weight.toString());
+                          setAddUnit(ls.unit);
+                        }
+                      }}
+                      >
+                      <Text style={styles.actionButtonText}>Fill Last</Text>
+                    </TouchableOpacity>
 
 
                   <UnitToggle unit={addUnit} onUnitChange={setAddUnit} />
@@ -532,278 +540,58 @@ export default function WorkoutSessionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  emptyText: {
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  workoutInfo: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  workoutDuration: {
-    fontSize: 14,
-  },
-  restTimer: {
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    minWidth: 120,
-  },
-  restTimerText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  stopTimerButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-  },
-  stopTimerButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  exerciseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  exerciseName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  exerciseActions: {
-    flexDirection: 'row',
-  },
-  historyButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  historyButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  historyContainer: {
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 8,
-  },
-  historyTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  historySession: {
-    marginBottom: 6,
-  },
-  historySessionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  historySet: {
-    fontSize: 12,
-    marginLeft: 8,
-    marginTop: 2,
-  },
-  noHistory: {
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-  setItem: {
-    padding: 12,
-    marginVertical: 4,
-    borderRadius: 8,
-  },
-  setText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  lastSetInfo: {
-    fontSize: 12,
-    marginBottom: 12,
-    fontStyle: 'italic',
-  },
-  addSetContainer: {
-    marginTop: 12,
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  editContainer: {
-    marginTop: 12,
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  editTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  unitToggleContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  unitToggleButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  unitToggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  enhancedInputColumn: {
-    flexDirection: 'column',
-    gap: 16,
-    marginBottom: 16,
-  },
-  incrementContainer: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-  },
-  incrementLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  incrementRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  incrementButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  incrementButtonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  incrementInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    borderRadius: 8,
-    fontSize: 16,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-    textAlign: 'center',
-  },
-  incrementSuffix: {
-    fontSize: 10,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  quickButtonsContainer: {
-    marginBottom: 16,
-  },
-  quickButtonsLabel: {
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  quickButtonsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  quickButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  quickButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  addSetActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  editActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  toggleButton: {
-    marginTop: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  toggleButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  bottomActions: {
-    flexDirection: 'row',
-    gap: 16,
-    padding: 16,
-    borderTopWidth: 1,
-  },
-  bottomButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  bottomButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
+  container: { flex: 1 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  emptyTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
+  emptyText: { fontSize: 16, textAlign: 'center' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1 },
+  workoutInfo: { flex: 1 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold' },
+  workoutDuration: { fontSize: 14 },
+  restTimer: { alignItems: 'center', padding: 12, borderRadius: 8, borderWidth: 1, minWidth: 120 },
+  restTimerText: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
+  stopTimerButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4 },
+  stopTimerButtonText: { color: '#fff', fontWeight: '600', fontSize: 12 },
+  card: { borderWidth: 1, borderRadius: 12, padding: 16, marginBottom: 16 },
+  exerciseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  exerciseName: { fontSize: 18, fontWeight: 'bold' },
+  historyButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  historyButtonText: { color: '#fff', fontWeight: '600', fontSize: 12 },
+  historyContainer: { marginBottom: 12, padding: 12, borderRadius: 8 },
+  historyTitle: { fontSize: 14, fontWeight: 'bold', marginBottom: 8 },
+  historySession: { marginBottom: 6 },
+  historySessionTitle: { fontSize: 12, fontWeight: '600' },
+  historySet: { fontSize: 12, marginLeft: 8, marginTop: 2 },
+  noHistory: { fontSize: 12, fontStyle: 'italic' },
+  setItem: { padding: 12, marginVertical: 4, borderRadius: 8 },
+  setText: { fontSize: 14, fontWeight: '500' },
+  lastSetInfo: { fontSize: 12, marginBottom: 12, fontStyle: 'italic' },
+  addSetContainer: { marginTop: 12, padding: 16, borderRadius: 8, borderWidth: 1 },
+  editContainer: { marginTop: 12, padding: 16, borderRadius: 8, borderWidth: 1 },
+  editTitle: { fontSize: 14, fontWeight: 'bold', marginBottom: 12 },
+  unitToggleContainer: { flexDirection: 'row', marginBottom: 16, borderRadius: 8, overflow: 'hidden' },
+  unitToggleButton: { flex: 1, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', borderWidth: 1 },
+  unitToggleText: { fontSize: 14, fontWeight: '600' },
+  enhancedInputColumn: { flexDirection: 'column', gap: 16, marginBottom: 16 },
+  incrementContainer: { borderWidth: 1, borderRadius: 8, padding: 12 },
+  incrementLabel: { fontSize: 12, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
+  incrementRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  incrementButton: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  incrementButtonText: { fontSize: 20, fontWeight: 'bold' },
+  incrementInput: { flex: 1, height: 40, borderWidth: 1, borderRadius: 8, fontSize: 16, fontWeight: '600', paddingHorizontal: 8, textAlign: 'center' },
+  incrementSuffix: { fontSize: 10, textAlign: 'center', marginTop: 4 },
+  quickButtonsContainer: { marginBottom: 16 },
+  quickButtonsLabel: { fontSize: 12, marginBottom: 8 },
+  quickButtonsRow: { flexDirection: 'row', gap: 8 },
+  quickButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
+  quickButtonText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  addSetActions: { flexDirection: 'row', gap: 12 },
+  editActions: { flexDirection: 'row', gap: 12 },
+  actionButton: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  actionButtonText: { color: '#fff', fontWeight: '600' },
+  toggleButton: { marginTop: 12, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  toggleButtonText: { color: '#fff', fontWeight: '600' },
+  bottomActions: { flexDirection: 'row', gap: 16, padding: 16, borderTopWidth: 1 },
+  bottomButton: { flex: 1, paddingVertical: 16, borderRadius: 8, alignItems: 'center' },
+  bottomButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });

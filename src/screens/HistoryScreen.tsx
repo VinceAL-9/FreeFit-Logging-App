@@ -11,6 +11,7 @@ import { useTheme } from '../context/ThemeProvider';
 import type { Workout } from '../context/WorkoutContext';
 import { useWorkout } from '../context/WorkoutContext';
 import { csvForWorkout, exportCSV } from '../utils/exportUtils';
+import { calculateSetVolume, calculateTotalVolumeForSets, convertWeight } from '../utils/weightConversion';
 
 export default function HistoryScreen() {
   const { workoutHistory, showToast, settings } = useWorkout();
@@ -34,12 +35,18 @@ export default function HistoryScreen() {
   const totalSets = (w: Workout) =>
     w.exercises.reduce((t, ex) => t + ex.sets.length, 0);
 
+  // Updated to use unit conversion for consistent volume calculation
   const totalWt = (w: Workout) =>
-    w.exercises.reduce(
-      (tot, ex) =>
-        tot + ex.sets.reduce((stTot, s) => stTot + s.weight * s.reps, 0),
-      0,
-    );
+    w.exercises.reduce((tot, ex) => {
+      return tot + calculateTotalVolumeForSets(ex.sets, settings.weightUnit);
+    }, 0);
+
+  // Calculate total volume for all workout history
+  const getTotalHistoryVolume = () => {
+    return workoutHistory.reduce((total, workout) => {
+      return total + totalWt(workout);
+    }, 0);
+  };
 
   /* exports */
   const exportOne = async (w: Workout) => {
@@ -63,7 +70,7 @@ export default function HistoryScreen() {
     try {
       const csv = workoutHistory
         .map(csvForWorkout)
-        .join('\n\n'); /* blank line between workouts */
+        .join('\n\n');
       const file = `all_workouts_${Date.now()}.csv`;
       await exportCSV(file, csv);
       showToast(`Exported ${file}`, 'success');
@@ -94,7 +101,7 @@ export default function HistoryScreen() {
               {item.name}
             </Text>
             <Text style={[styles.workoutDate, { color: colors.textSecondary }]}>
-              {fmtDate(item.date)}  {fmtTime(item.date)}
+              {fmtDate(item.date)} {fmtTime(item.date)}
             </Text>
           </View>
           <View style={styles.headerRight}>
@@ -112,10 +119,7 @@ export default function HistoryScreen() {
         {/* short list of exercises */}
         <View style={styles.exerciseRow}>
           {item.exercises.map((ex, i) => (
-            <Text
-              key={i}
-              style={[styles.exerciseText, { color: colors.text }]}
-            >
+            <Text key={i} style={[styles.exerciseText, { color: colors.text }]}>
               {ex.name} ({ex.sets.length})
             </Text>
           ))}
@@ -126,28 +130,35 @@ export default function HistoryScreen() {
           <View style={[styles.detailsBox, { borderTopColor: colors.border }]}>
             {item.exercises.map((ex, exIdx) => (
               <View key={exIdx} style={styles.detailSection}>
-                <Text
-                  style={[styles.detailHeader, { color: colors.text }]}
-                >
+                <Text style={[styles.detailHeader, { color: colors.text }]}>
                   {ex.name}
                 </Text>
-                {ex.sets.map((s, i) => (
-                  <Text
-                    key={i}
-                    style={[styles.setLine, { color: colors.textSecondary }]}
-                  >
-                    Set {i + 1}: {s.reps} × {s.weight}
-                    {s.unit}   Vol: {(s.reps * s.weight).toFixed(1)}
-                    {s.unit}
-                  </Text>
-                ))}
+                {ex.sets.map((s, i) => {
+                  // Convert weight to user's preferred unit for display
+                  const convertedWeight = convertWeight(s.weight, s.unit, settings.weightUnit);
+                  const setVolume = calculateSetVolume(s.reps, s.weight, s.unit, settings.weightUnit);
+                  
+                  return (
+                    <Text
+                      key={i}
+                      style={[styles.setLine, { color: colors.textSecondary }]}
+                    >
+                      Set {i + 1}: {s.reps} × {convertedWeight.toFixed(1)}{settings.weightUnit}
+                      {s.unit !== settings.weightUnit && (
+                        <Text style={{ fontSize: 10, opacity: 0.7 }}>
+                          {' '}(orig: {s.weight}{s.unit})
+                        </Text>
+                      )}
+                      {' '}Vol: {setVolume.toFixed(1)}{settings.weightUnit}
+                    </Text>
+                  );
+                })}
               </View>
             ))}
 
             <View style={[styles.summaryBox, { backgroundColor: colors.background }]}>
               <Text style={[styles.summaryText, { color: colors.text }]}>
-                Total Volume: {totalWt(item).toFixed(1)}
-                {settings.weightUnit}
+                Total Volume: {totalWt(item).toFixed(1)}{settings.weightUnit}
               </Text>
               <Text style={[styles.summaryText, { color: colors.text }]}>
                 Total Sets: {totalSets(item)}
@@ -219,10 +230,7 @@ export default function HistoryScreen() {
         </View>
         <View style={styles.statCol}>
           <Text style={[styles.statNumber, { color: colors.primary }]}>
-            {workoutHistory
-              .reduce((t, w) => t + totalWt(w), 0)
-              .toFixed(0)}
-            {settings.weightUnit}
+            {getTotalHistoryVolume().toFixed(0)}{settings.weightUnit}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
             Volume
@@ -240,7 +248,7 @@ export default function HistoryScreen() {
   );
 }
 
-/* ---- styles (only key class names shown; keep rest of your previous style block) ---- */
+/* ---- styles ---- */
 const styles = StyleSheet.create({
   container: { flex: 1 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1 },

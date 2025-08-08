@@ -5,6 +5,7 @@ import React from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeProvider';
 import { useWorkout } from '../context/WorkoutContext';
+import { calculateTotalVolumeForSets } from '../utils/weightConversion';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -16,6 +17,7 @@ export default function HomeScreen() {
     workoutStartTime,
     clearWorkout,
     showToast,
+    settings,
   } = useWorkout();
   const { colors, isDark } = useTheme();
 
@@ -42,6 +44,7 @@ export default function HomeScreen() {
 
   const getLastWorkout = () => (workoutHistory.length > 0 ? workoutHistory[0] : null);
 
+  // Updated to use unit conversion for consistent volume calculation
   const getWeeklyStats = () => {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
@@ -53,17 +56,13 @@ export default function HomeScreen() {
       0,
     );
 
-    const totalVolume = weeklyWorkouts.reduce(
-      (total, workout) =>
-        total +
-        workout.exercises.reduce(
-          (exerciseTotal, exercise) =>
-            exerciseTotal +
-            exercise.sets.reduce((setTotal, set) => setTotal + set.weight * set.reps, 0),
-          0,
-        ),
-      0,
-    );
+    // Calculate total volume in preferred unit, converting all sets weights accordingly
+    const totalVolume = weeklyWorkouts.reduce((total, workout) => {
+      const workoutVolume = workout.exercises.reduce((exTotal, exercise) => {
+        return exTotal + calculateTotalVolumeForSets(exercise.sets, settings.weightUnit);
+      }, 0);
+      return total + workoutVolume;
+    }, 0);
 
     return {
       workouts: weeklyWorkouts.length,
@@ -191,7 +190,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: colors.primary }]}>
-              {weeklyStats.volume.toFixed(0)} kg
+              {weeklyStats.volume.toFixed(0)} {settings.weightUnit}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Volume</Text>
           </View>
@@ -255,7 +254,7 @@ export default function HomeScreen() {
             <Text style={[styles.exerciseName, { color: colors.text }]}>Deadlift</Text>
           </View>
           <TouchableOpacity
-            style={[styles.libraryItem, { backgroundColor: colors.background }]} 
+            style={[styles.libraryItem, { backgroundColor: colors.background }]}
             onPress={() => navigation.navigate('Library' as never)}
           >
             <Text style={styles.exerciseIcon}>➕</Text>
@@ -310,20 +309,20 @@ const styles = StyleSheet.create({
   statsGrid: { flexDirection: 'row', justifyContent: 'space-around' },
   statItem: { alignItems: 'center' },
   statNumber: { fontSize: 24, fontWeight: 'bold' },
-  statLabel: { fontSize: 12, color: '#6e6e6e', marginTop: 4 },
+  statLabel: { fontSize: 12, marginTop: 4 },
   recentCard: { borderRadius: 12, padding: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
   recentTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
   recentWorkout: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   recentWorkoutInfo: { flex: 1 },
   recentWorkoutName: { fontSize: 16, fontWeight: '600' },
-  recentWorkoutDate: { fontSize: 12, color: '#6e6e6e' },
+  recentWorkoutDate: { fontSize: 12 },
   recentWorkoutStats: { alignItems: 'flex-end' },
   recentStat: { fontSize: 12, fontWeight: '600' },
   recentExercises: { marginTop: 8 },
-  recentExercise: { fontSize: 14, marginBottom: 2, color: '#6e6e6e' },
+  recentExercise: { fontSize: 14, marginBottom: 2 },
   libraryPreview: { borderRadius: 12, padding: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
   libraryTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
-  libraryGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  libraryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   libraryItem: { flex: 1, minWidth: '45%', alignItems: 'center', padding: 12, borderRadius: 8 },
   exerciseIcon: { fontSize: 20, marginBottom: 4 },
   exerciseName: { fontSize: 12, textAlign: 'center' },
