@@ -20,6 +20,57 @@ const formatTime = (seconds: number): string => {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
+// Unit Toggle Component
+const UnitToggle: React.FC<{
+  unit: 'kg' | 'lbs';
+  onUnitChange: (unit: 'kg' | 'lbs') => void;
+}> = ({ unit, onUnitChange }) => {
+  const { colors } = useTheme();
+
+  return (
+    <View style={styles.unitToggleContainer}>
+      <TouchableOpacity
+        style={[
+          styles.unitToggleButton,
+          {
+            backgroundColor: unit === 'kg' ? colors.primary : colors.background,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => onUnitChange('kg')}
+      >
+        <Text
+          style={[
+            styles.unitToggleText,
+            { color: unit === 'kg' ? '#fff' : colors.text },
+          ]}
+        >
+          KG
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.unitToggleButton,
+          {
+            backgroundColor: unit === 'lbs' ? colors.primary : colors.background,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => onUnitChange('lbs')}
+      >
+        <Text
+          style={[
+            styles.unitToggleText,
+            { color: unit === 'lbs' ? '#fff' : colors.text },
+          ]}
+        >
+          LBS
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
 // Increment/Decrement Component with unit support
 const IncrementInput: React.FC<{
   value: string;
@@ -59,7 +110,6 @@ const IncrementInput: React.FC<{
           style={[styles.incrementButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={decrement}
           activeOpacity={0.7}
-          accessibilityLabel={`Decrease ${label.toLowerCase()}`}
         >
           <Text style={[styles.incrementButtonText, { color: colors.text }]}>−</Text>
         </TouchableOpacity>
@@ -75,14 +125,12 @@ const IncrementInput: React.FC<{
           keyboardType="numeric"
           textAlign="center"
           selectTextOnFocus
-          accessibilityLabel={`${label} input field`}
         />
         
         <TouchableOpacity
           style={[styles.incrementButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={increment}
           activeOpacity={0.7}
-          accessibilityLabel={`Increase ${label.toLowerCase()}`}
         >
           <Text style={[styles.incrementButtonText, { color: colors.text }]}>+</Text>
         </TouchableOpacity>
@@ -155,13 +203,18 @@ export default function WorkoutSessionScreen() {
   const [editReps, setEditReps] = useState('');
   const [editWeight, setEditWeight] = useState('');
   const [showHistory, setShowHistory] = useState<string | null>(null);
+  
+  // Unit state for add set interface
+  const [addSetUnit, setAddSetUnit] = useState<'kg' | 'lbs'>(settings.weightUnit);
+  // Unit state for edit set interface  
+  const [editSetUnit, setEditSetUnit] = useState<'kg' | 'lbs'>(settings.weightUnit);
 
   const handleAddSet = (exerciseName: string) => {
     const reps = parseInt(repsInput, 10);
     const weight = parseFloat(weightInput);
 
     if (!isNaN(reps) && !isNaN(weight) && reps > 0 && weight >= 0) {
-      addSetToExercise(exerciseName, reps, weight);
+      addSetToExercise(exerciseName, reps, weight, addSetUnit);
       setRepsInput('');
       setWeightInput('');
       setActiveExercise(null);
@@ -189,22 +242,25 @@ export default function WorkoutSessionScreen() {
 
   const getLastSetInfo = (exerciseName: string): string => {
     const history = getExerciseHistory(exerciseName);
-    if (history.length > 0 && history[0].sets.length > 0) {
-      const lastSet = history[0].sets[history[0].sets.length - 1];
-      const unit = lastSet.unit || settings.weightUnit;
-      return `Last: ${lastSet.reps} reps @ ${lastSet.weight}${unit}`;
-    }
+      if (history.length > 0 && history[0].sets.length > 0) {
+        const session = history[0];
+        const lastSet = session.sets[session.sets.length - 1];
+        const unit = lastSet.unit || settings.weightUnit;
+        return `Last: ${lastSet.reps} reps @ ${lastSet.weight}${unit}`;
+      }
     return 'No previous data';
   };
 
   const quickFillFromLast = (exerciseName: string) => {
     const history = getExerciseHistory(exerciseName);
-    if (history.length > 0 && history[0].sets.length > 0) {
-      const lastSet = history[0].sets[history[0].sets.length - 1];
-      setRepsInput(lastSet.reps.toString());
-      setWeightInput(lastSet.weight.toString());
-    }
-  };
+      if (history.length > 0 && history[0].sets.length > 0) {
+        const session = history[0];
+        const lastSet = session.sets[session.sets.length - 1];
+        setRepsInput(lastSet.reps.toString());
+        setWeightInput(lastSet.weight.toString());
+        setAddSetUnit(lastSet.unit || settings.weightUnit);
+      }
+      };
 
   if (selectedExercises.length === 0) {
     return (
@@ -308,6 +364,7 @@ export default function WorkoutSessionScreen() {
                           setEditMode({ exerciseName: item.name, setIndex: index });
                           setEditReps(set.reps.toString());
                           setEditWeight(set.weight.toString());
+                          setEditSetUnit(set.unit || settings.weightUnit);
                         },
                       },
                       {
@@ -333,6 +390,9 @@ export default function WorkoutSessionScreen() {
                   Editing Set {editMode.setIndex + 1}
                 </Text>
 
+                {/* Unit Toggle for Edit */}
+                <UnitToggle unit={editSetUnit} onUnitChange={setEditSetUnit} />
+
                 <View style={styles.enhancedInputColumn}>
                   <IncrementInput
                     value={editReps}
@@ -345,9 +405,9 @@ export default function WorkoutSessionScreen() {
                   <IncrementInput
                     value={editWeight}
                     onValueChange={setEditWeight}
-                    step={getWeightIncrement(settings.weightUnit)}
+                    step={getWeightIncrement(editSetUnit)}
                     label="Weight"
-                    suffix={settings.weightUnit}
+                    suffix={editSetUnit}
                     max={500}
                   />
                 </View>
@@ -359,7 +419,7 @@ export default function WorkoutSessionScreen() {
                       const newReps = parseInt(editReps, 10);
                       const newWeight = parseFloat(editWeight);
                       if (!isNaN(newReps) && !isNaN(newWeight) && newReps > 0 && newWeight >= 0) {
-                        editSetInExercise(item.name, editMode.setIndex, newReps, newWeight);
+                        editSetInExercise(item.name, editMode.setIndex, newReps, newWeight, editSetUnit);
                         setEditMode(null);
                         setEditReps('');
                         setEditWeight('');
@@ -394,6 +454,9 @@ export default function WorkoutSessionScreen() {
                   <Text style={styles.actionButtonText}>Fill Last</Text>
                 </TouchableOpacity>
 
+                {/* Unit Toggle for Add Set */}
+                <UnitToggle unit={addSetUnit} onUnitChange={setAddSetUnit} />
+
                 <View style={styles.enhancedInputColumn}>
                   <IncrementInput
                     value={repsInput}
@@ -406,9 +469,9 @@ export default function WorkoutSessionScreen() {
                   <IncrementInput
                     value={weightInput}
                     onValueChange={setWeightInput}
-                    step={getWeightIncrement(settings.weightUnit)}
+                    step={getWeightIncrement(addSetUnit)}
                     label="Weight"
-                    suffix={settings.weightUnit}
+                    suffix={addSetUnit}
                     max={500}
                   />
                 </View>
@@ -416,7 +479,7 @@ export default function WorkoutSessionScreen() {
                 <QuickWeightButtons
                   currentWeight={weightInput}
                   onWeightChange={setWeightInput}
-                  unit={settings.weightUnit}
+                  unit={addSetUnit}
                 />
 
                 <View style={styles.addSetActions}>
@@ -606,6 +669,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 12,
+  },
+  unitToggleContainer: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  unitToggleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  unitToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   enhancedInputColumn: {
     flexDirection: 'column',

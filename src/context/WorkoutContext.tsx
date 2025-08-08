@@ -1,9 +1,9 @@
 // src/context/WorkoutContext.tsx
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
-
 
 export interface Set {
   reps: number;
@@ -36,9 +36,9 @@ export interface Settings {
 interface WorkoutContextType {
   selectedExercises: Exercise[];
   addExercise: (exercise: { name: string }) => void;
-  addSetToExercise: (exerciseName: string, reps: number, weight: number) => void;
+  addSetToExercise: (exerciseName: string, reps: number, weight: number, unit: 'kg' | 'lbs') => void;
   removeSetFromExercise: (exerciseName: string, setIndex: number) => void;
-  editSetInExercise: (exerciseName: string, setIndex: number, reps: number, weight: number) => void;
+  editSetInExercise: (exerciseName: string, setIndex: number, reps: number, weight: number, unit: 'kg' | 'lbs') => void;
   finishWorkout: (workoutName?: string) => Promise<void>;
   clearWorkout: () => void;
   workoutHistory: Workout[];
@@ -75,13 +75,13 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isRestTimerActive, setIsRestTimerActive] = useState(false);
   const [restTimeRemaining, setRestTimeRemaining] = useState(0);
   const [workoutStartTime, setWorkoutStartTime] = useState<Date | null>(null);
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
-  
-  const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const restTimerRef = useRef<any>(null); // or useRef<number | null>(null)
+  const toastTimeoutRef = useRef<any>(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -166,21 +166,18 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setToastMessage(message);
     setToastType(type);
     setToastVisible(true);
-
     // Clear any existing timeout
     if (toastTimeoutRef.current) {
       clearTimeout(toastTimeoutRef.current);
     }
-
     // Auto-hide toast after 3 seconds
-    toastTimeoutRef.current = setTimeout(() => {
+    toastTimeoutRef.current = setTimeout(() => { // Type 'number' is not assignable to type 'Timeout'.
       setToastVisible(false);
     }, 3000);
   };
 
   const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'error' = 'light') => {
     if (!settings.hapticsEnabled) return;
-
     try {
       switch (type) {
         case 'light':
@@ -225,7 +222,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     setSelectedExercises(prev => [...prev, newExercise]);
-    
     // Start workout timer if this is the first exercise
     if (selectedExercises.length === 0) {
       setWorkoutStartTime(new Date());
@@ -235,13 +231,13 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     triggerHaptic('light');
   };
 
-  const addSetToExercise = (exerciseName: string, reps: number, weight: number) => {
+  const addSetToExercise = (exerciseName: string, reps: number, weight: number, unit: 'kg' | 'lbs') => {
     const newSet: Set = {
-    reps,
-    weight,
-    unit: settings.weightUnit,        // uses user preference
-    timestamp: new Date().toISOString(),
-  };
+      reps,
+      weight,
+      unit, // Now passed from UI
+      timestamp: new Date().toISOString(),
+    };
 
     setSelectedExercises(prev =>
       prev.map(exercise =>
@@ -253,8 +249,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Auto-start rest timer after adding a set
     startRestTimer();
-
-    showToast(`Set logged: ${reps} reps @ ${weight}kg`, 'success');
+    showToast(`Set logged: ${reps} reps @ ${weight}${unit}`, 'success');
     triggerHaptic('medium');
   };
 
@@ -271,7 +266,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     triggerHaptic('error');
   };
 
-  const editSetInExercise = (exerciseName: string, setIndex: number, reps: number, weight: number) => {
+  const editSetInExercise = (exerciseName: string, setIndex: number, reps: number, weight: number, unit: 'kg' | 'lbs') => {
     setSelectedExercises(prev =>
       prev.map(exercise =>
         exercise.name === exerciseName
@@ -279,7 +274,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
               ...exercise,
               sets: exercise.sets.map((set, index) =>
                 index === setIndex
-                  ? { ...set, reps, weight, timestamp: new Date().toISOString() }
+                  ? { ...set, reps, weight, unit, timestamp: new Date().toISOString() }
                   : set
               ),
             }
@@ -287,29 +282,27 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       )
     );
 
-    showToast(`Set updated: ${reps} reps @ ${weight}kg`, 'success');
+    showToast(`Set updated: ${reps} reps @ ${weight}${unit}`, 'success');
     triggerHaptic('light');
   };
 
   const startRestTimer = (seconds: number = settings.restTimerDuration) => {
     // Clear any existing timer
+    
     if (restTimerRef.current) {
       clearInterval(restTimerRef.current);
     }
-
+    
     setRestTimeRemaining(seconds);
     setIsRestTimerActive(true);
-
-    restTimerRef.current = setInterval(() => {
+    restTimerRef.current = setInterval(() => { // Type 'number' is not assignable to type 'Timeout'.
       setRestTimeRemaining(prev => {
         if (prev <= 1) {
           // Timer finished
           setIsRestTimerActive(false);
           clearInterval(restTimerRef.current!);
-          
           showToast('Rest time finished!', 'success');
           triggerHaptic('success');
-          
           return 0;
         }
         return prev - 1;
@@ -333,7 +326,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     const endTime = new Date();
-    const duration = workoutStartTime 
+    const duration = workoutStartTime
       ? Math.round((endTime.getTime() - workoutStartTime.getTime()) / 1000 / 60) // minutes
       : 0;
 
@@ -351,7 +344,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Clear current workout
     clearWorkout();
-
     triggerHaptic('success');
     showToast(`Workout saved: ${workout.name}!`, 'success');
   };
@@ -360,14 +352,12 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSelectedExercises([]);
     setWorkoutStartTime(null);
     stopRestTimer();
-    
     // Clear saved current workout
     AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_WORKOUT);
   };
 
   const getExerciseHistory = (exerciseName: string): Exercise[] => {
     const history: Exercise[] = [];
-    
     workoutHistory.forEach(workout => {
       const exercise = workout.exercises.find(ex => ex.name === exerciseName);
       if (exercise && exercise.sets.length > 0) {
@@ -377,7 +367,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
       }
     });
-
     return history.slice(0, 5); // Return last 5 sessions
   };
 
@@ -418,10 +407,10 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       {children}
       {/* Toast Component */}
       {toastVisible && (
-        <Toast 
-          message={toastMessage} 
-          type={toastType} 
-          onDismiss={() => setToastVisible(false)} 
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onDismiss={() => setToastVisible(false)}
         />
       )}
     </WorkoutContext.Provider>
@@ -429,23 +418,23 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 };
 
 // Toast Component
-const Toast: React.FC<{ 
-  message: string; 
-  type: 'success' | 'error' | 'info'; 
-  onDismiss: () => void; 
+const Toast: React.FC<{
+  message: string;
+  type: 'success' | 'error' | 'info';
+  onDismiss: () => void;
 }> = ({ message, type, onDismiss }) => {
   const getToastColor = () => {
     switch (type) {
       case 'success': return '#4CAF50'; // green
-      case 'error': return '#f44336';   // red
-      default: return '#2196F3';         // blue for info
+      case 'error': return '#f44336'; // red
+      default: return '#2196F3'; // blue for info
     }
   };
 
   return (
     <View style={[toastStyles.container, { backgroundColor: getToastColor() }]}>
       <Text style={toastStyles.text}>{message}</Text>
-      <TouchableOpacity onPress={onDismiss} style={toastStyles.closeButton} accessibilityLabel="Dismiss toast">
+      <TouchableOpacity onPress={onDismiss} style={toastStyles.closeButton}>
         <Text style={toastStyles.closeText}>{'\u00D7'}</Text>
       </TouchableOpacity>
     </View>
@@ -490,6 +479,7 @@ const toastStyles = StyleSheet.create({
 });
 
 export default Toast;
+
 export const useWorkout = () => {
   const context = useContext(WorkoutContext);
   if (context === undefined) {
