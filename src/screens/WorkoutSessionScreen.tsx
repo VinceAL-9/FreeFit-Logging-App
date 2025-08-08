@@ -303,11 +303,9 @@ export default function WorkoutSessionScreen() {
               <View style={styles.exerciseHeader}>
                 <Text style={[styles.exerciseName, { color: colors.text }]}>{item.name}</Text>
                 <TouchableOpacity
-                  style={[styles.historyButton, { backgroundColor: colors.info }]}
-                  onPress={() =>
-                    setShowHist(showHist === item.name ? null : item.name)
-                  }
-                >
+                  style={[styles.historyButton, { backgroundColor: colors.primary }]}
+                  onPress={() => setShowHist(showHist === item.name ? null : item.name)}
+                    >
                   <Text style={styles.historyButtonText}>
                     {showHist === item.name ? 'Hide' : 'History'}
                   </Text>
@@ -456,20 +454,20 @@ export default function WorkoutSessionScreen() {
                   </Text>
 
                   <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: colors.info }]}
-                      onPress={() => {
-                        const h = getExerciseHistory(item.name);
-                        if (h.length > 0 && h[0].sets.length > 0) {
-                          const session = h[0];                         // Access first exercise in array
-                          const ls = session.sets[session.sets.length - 1];
-                          setReps(ls.reps.toString());
-                          setWt(ls.weight.toString());
-                          setAddUnit(ls.unit);
-                        }
-                      }}
+                    style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                    onPress={() => {
+                      const h = getExerciseHistory(item.name);
+                      if (h.length > 0 && h[0].sets.length > 0) {
+                        const session = h[0];
+                        const ls = session.sets[session.sets.length - 1];
+                        setReps(ls.reps.toString());
+                        setWt(ls.weight.toString());
+                        setAddUnit(ls.unit);
+                      }
+                    }}
                       >
-                      <Text style={styles.actionButtonText}>Fill Last</Text>
-                    </TouchableOpacity>
+                    <Text style={styles.actionButtonText}>Fill Last</Text>
+                  </TouchableOpacity>
 
 
                   <UnitToggle unit={addUnit} onUnitChange={setAddUnit} />

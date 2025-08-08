@@ -1,131 +1,150 @@
 // src/context/ThemeProvider.tsx
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Appearance } from 'react-native';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
-export interface Colors {
+interface Colors {
+  // Orange Shades (Primary Brand Colors)
   primary: string;
+  primaryLight: string;
+  primaryDark: string;
+  
+  // Background Colors
   background: string;
   surface: string;
+  
+  // Text Colors
   text: string;
   textSecondary: string;
+  
+  // UI Colors
   border: string;
   success: string;
-  warning: string;
   error: string;
+  warning: string;
   info: string;
 }
 
-export interface Theme {
+interface Theme {
   colors: Colors;
-  isDark: boolean;
+  fonts: {
+    brand: string;        // StrokeWeight for branding
+    heading: string;      // StrokeWeight for headings
+    body: string;         // Roboto for body text
+    bodyMedium: string;   // Roboto Medium
+    bodyBold: string;     // Roboto Bold
+  };
 }
 
 const lightTheme: Theme = {
   colors: {
-    primary: '#007AFF',
-    background: '#ffffff',
-    surface: '#f8f9fa',
-    text: '#1a1a1a',
-    textSecondary: '#666666',
-    border: '#e0e0e0',
+    // Orange Brand Colors
+    primary: '#FF8C42',        // Main orange from your logo
+    primaryLight: '#FFB366',   // Lighter orange
+    primaryDark: '#E67429',    // Darker orange
+    
+    // Backgrounds
+    background: '#FFFFFF',
+    surface: '#F8F9FA',
+    
+    // Text
+    text: '#1A1A1A',
+    textSecondary: '#6B6B6B',
+    
+    // UI Elements
+    border: '#E5E5E5',
     success: '#4CAF50',
+    error: '#F44336',
     warning: '#FF9800',
-    error: '#f44336',
     info: '#2196F3',
   },
-  isDark: false,
+  fonts: {
+    brand: 'strokeWeight-120-rotate-6',     // For main branding
+    heading: 'strokeWeight-80-rotate-12',   // For headings
+    body: 'Roboto-Regular',
+    bodyMedium: 'Roboto-Medium',
+    bodyBold: 'Roboto-Bold',
+  },
 };
 
 const darkTheme: Theme = {
   colors: {
-    primary: '#0A84FF',
-    background: '#000000',
-    surface: '#1c1c1e',
-    text: '#ffffff',
-    textSecondary: '#8e8e93',
-    border: '#38383a',
-    success: '#30d158',
-    warning: '#ff9f0a',
-    error: '#ff453a',
-    info: '#007aff',
+    // Orange Brand Colors (same)
+    primary: '#FF8C42',
+    primaryLight: '#FFB366',
+    primaryDark: '#E67429',
+    
+    // Dark Backgrounds
+    background: '#121212',
+    surface: '#1E1E1E',
+    
+    // Dark Text
+    text: '#FFFFFF',
+    textSecondary: '#B3B3B3',
+    
+    // Dark UI Elements
+    border: '#2C2C2C',
+    success: '#4CAF50',
+    error: '#F44336',
+    warning: '#FF9800',
+    info: '#2196F3',
   },
-  isDark: true,
+  fonts: {
+    brand: 'strokeWeight-120-rotate-6',
+    heading: 'strokeWeight-80-rotate-12',
+    body: 'Roboto-Regular',
+    bodyMedium: 'Roboto-Medium',
+    bodyBold: 'Roboto-Bold',
+  },
 };
 
 interface ThemeContextType {
   theme: Theme;
-  themeMode: ThemeMode;
-  setThemeMode: (mode: ThemeMode) => void;
   colors: Colors;
+  fonts: Theme['fonts'];
+  themeMode: ThemeMode;
   isDark: boolean;
+  setThemeMode: (mode: ThemeMode) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const THEME_STORAGE_KEY = '@theme_mode';
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [themeMode, setThemeMode] = useState<ThemeMode>('system');
+  const [isDark, setIsDark] = useState(false);
 
-export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  // Load saved theme preference
   useEffect(() => {
-    const loadThemeMode = async () => {
-      try {
-        const savedMode = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-        if (savedMode && ['light', 'dark', 'system'].includes(savedMode)) {
-          setThemeModeState(savedMode as ThemeMode);
-        }
-      } catch (error) {
-        console.error('Failed to load theme mode:', error);
-      } finally {
-        setIsLoaded(true);
+    const updateTheme = () => {
+      if (themeMode === 'system') {
+        setIsDark(Appearance.getColorScheme() === 'dark');
+      } else {
+        setIsDark(themeMode === 'dark');
       }
     };
 
-    loadThemeMode();
-  }, []);
-
-  // Save theme preference when it changes
-  const setThemeMode = async (mode: ThemeMode) => {
-    try {
-      setThemeModeState(mode);
-      await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
-    } catch (error) {
-      console.error('Failed to save theme mode:', error);
-    }
-  };
-
-  // Determine actual theme based on mode and system preference
-  const getActualTheme = (): Theme => {
+    updateTheme();
+    
     if (themeMode === 'system') {
-      return systemColorScheme === 'dark' ? darkTheme : lightTheme;
+      const subscription = Appearance.addChangeListener(updateTheme);
+      return () => subscription?.remove();
     }
-    return themeMode === 'dark' ? darkTheme : lightTheme;
-  };
+  }, [themeMode]);
 
-  const currentTheme = getActualTheme();
+  const theme = isDark ? darkTheme : lightTheme;
 
-  const contextValue: ThemeContextType = {
-    theme: currentTheme,
+  const value: ThemeContextType = {
+    theme,
+    colors: theme.colors,
+    fonts: theme.fonts,
     themeMode,
+    isDark,
     setThemeMode,
-    colors: currentTheme.colors,
-    isDark: currentTheme.isDark,
   };
-
-  // Don't render until theme is loaded to prevent flash
-  if (!isLoaded) {
-    return null;
-  }
 
   return (
-    <ThemeContext.Provider value={contextValue}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

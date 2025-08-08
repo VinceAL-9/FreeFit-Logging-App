@@ -1,17 +1,15 @@
 // src/screens/ExerciseLibraryScreen.tsx
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  Button,
   FlatList,
   Modal,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useTheme } from '../context/ThemeProvider';
 import { useWorkout } from '../context/WorkoutContext';
@@ -199,7 +197,13 @@ export default function ExerciseLibraryScreen() {
                     )}
                   </View>
                   <View style={styles.exerciseActions}>
-                    <Button title="Add" onPress={() => handleAdd(exercise)} />
+                    <TouchableOpacity
+                      style={[styles.addButton, { backgroundColor: colors.primary }]}
+                      onPress={() => handleAdd(exercise)}
+                      >
+                      <Text style={[styles.addButtonText, { color: '#fff' }]}>Add</Text>
+                    </TouchableOpacity>
+
                     {exercise.isCustom && (
                       <TouchableOpacity
                         style={[styles.deleteButton, { backgroundColor: colors.error }]}
@@ -332,6 +336,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 12,
   },
+  addButton: {
+  paddingHorizontal: 16,
+  paddingVertical: 8,
+  borderRadius: 8,
+  alignItems: 'center',
+  justifyContent: 'center',
+  // backgroundColor will be passed dynamically from theme
+  },
+  addButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff', // white text
+  },
+
   exerciseItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',

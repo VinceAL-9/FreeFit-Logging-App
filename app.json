@@ -1,20 +1,44 @@
 {
   "expo": {
-    "name": "workout-log-app",
-    "slug": "workout-log-app",
+    "name": "FreeFit",
+    "font": [
+      "assets/fonts/roboto/Roboto-Regular.ttf",
+      "assets/fonts/roboto/Roboto-Medium.ttf",
+      "assets/fonts/roboto/Roboto-Bold.ttf",
+      "assets/fonts/roboto/Roboto-Light.ttf",
+      "assets/fonts/roboto/Roboto-Thin.ttf",
+      "assets/fonts/roboto/Roboto-Black.ttf",
+      "assets/fonts/roboto/Roboto-BlackItalic.ttf",
+      "assets/fonts/roboto/Roboto-BoldItalic.ttf",
+      "assets/fonts/roboto/Roboto-Italic.ttf",
+      "assets/fonts/roboto/Roboto-LightItalic.ttf",
+      "assets/fonts/roboto/Roboto-MediumItalic.ttf",
+      "assets/fonts/roboto/Roboto-ThinItalic.ttf",
+      "assets/fonts/strokeweight/strokeWeight-80-rotate-12.otf",
+      "assets/fonts/strokeweight/strokeWeight-120-rotate-6.otf"
+    ],
+    "slug": "freefit",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/freefit-icon.png",
     "scheme": "workoutlogapp",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/freefit-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FF8C42"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/freefit-icon.png",
+        "backgroundColor": "##FF8C42"
       },
       "edgeToEdgeEnabled": true
     },
