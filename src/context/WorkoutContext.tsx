@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
+import { playRestTimerSound } from '../utils/sound';
 
 export interface Set {
   reps: number;
@@ -287,28 +288,34 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const startRestTimer = (seconds: number = settings.restTimerDuration) => {
-    // Clear any existing timer
-    
-    if (restTimerRef.current) {
-      clearInterval(restTimerRef.current);
-    }
-    
-    setRestTimeRemaining(seconds);
-    setIsRestTimerActive(true);
-    restTimerRef.current = setInterval(() => { // Type 'number' is not assignable to type 'Timeout'.
-      setRestTimeRemaining(prev => {
-        if (prev <= 1) {
-          // Timer finished
-          setIsRestTimerActive(false);
-          clearInterval(restTimerRef.current!);
-          showToast('Rest time finished!', 'success');
-          triggerHaptic('success');
-          return 0;
+  // Clear any existing timer
+  if (restTimerRef.current) {
+    clearInterval(restTimerRef.current);
+  }
+
+  setRestTimeRemaining(seconds);
+  setIsRestTimerActive(true);
+
+  restTimerRef.current = setInterval(() => {
+    setRestTimeRemaining(prev => {
+      if (prev <= 1) {
+        // Timer finished
+        setIsRestTimerActive(false);
+        clearInterval(restTimerRef.current!);
+        
+        // Play sound if enabled in settings
+        if (settings.soundEnabled) {
+          playRestTimerSound();
         }
-        return prev - 1;
-      });
-    }, 1000);
-  };
+        
+        showToast('Rest time finished!', 'success');
+        triggerHaptic('success');
+        return 0;
+      }
+      return prev - 1;
+    });
+  }, 1000);
+};
 
   const stopRestTimer = () => {
     if (restTimerRef.current) {

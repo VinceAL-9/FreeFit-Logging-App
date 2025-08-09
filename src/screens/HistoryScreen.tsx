@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeProvider';
 import type { Workout } from '../context/WorkoutContext';
 import { useWorkout } from '../context/WorkoutContext';
@@ -193,58 +194,60 @@ export default function HistoryScreen() {
 
   /* main list */
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* top bar */}
-      <View style={[styles.topBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Text style={[styles.topTitle, { color: colors.text }]}>Workout History</Text>
-        <TouchableOpacity
-          style={[styles.exportBtn, { backgroundColor: colors.primary }]}
-          onPress={() =>
-            Alert.alert('Export', 'Choose export option', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'All Workouts', onPress: exportAll },
-            ])
-          }
-        >
-          <Text style={styles.exportText}>Export</Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* top bar */}
+        <View style={[styles.topBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.topTitle, { color: colors.text }]}>Workout History</Text>
+          <TouchableOpacity
+            style={[styles.exportBtn, { backgroundColor: colors.primary }]}
+            onPress={() =>
+              Alert.alert('Export', 'Choose export option', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'All Workouts', onPress: exportAll },
+              ])
+            }
+          >
+            <Text style={styles.exportText}>Export</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* stat bar */}
-      <View style={[styles.statBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <View style={styles.statCol}>
-          <Text style={[styles.statNumber, { color: colors.primary }]}>
-            {workoutHistory.length}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Workouts
-          </Text>
+        {/* stat bar */}
+        <View style={[styles.statBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <View style={styles.statCol}>
+            <Text style={[styles.statNumber, { color: colors.primary }]}>
+              {workoutHistory.length}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              Workouts
+            </Text>
+          </View>
+          <View style={styles.statCol}>
+            <Text style={[styles.statNumber, { color: colors.primary }]}>
+              {workoutHistory.reduce((t, w) => t + totalSets(w), 0)}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              Sets
+            </Text>
+          </View>
+          <View style={styles.statCol}>
+            <Text style={[styles.statNumber, { color: colors.primary }]}>
+              {getTotalHistoryVolume().toFixed(0)}{settings.weightUnit}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              Volume
+            </Text>
+          </View>
         </View>
-        <View style={styles.statCol}>
-          <Text style={[styles.statNumber, { color: colors.primary }]}>
-            {workoutHistory.reduce((t, w) => t + totalSets(w), 0)}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Sets
-          </Text>
-        </View>
-        <View style={styles.statCol}>
-          <Text style={[styles.statNumber, { color: colors.primary }]}>
-            {getTotalHistoryVolume().toFixed(0)}{settings.weightUnit}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Volume
-          </Text>
-        </View>
-      </View>
 
-      <FlatList
-        data={workoutHistory}
-        keyExtractor={(w) => w.id}
-        renderItem={Card}
-        contentContainerStyle={styles.listWrap}
-      />
-    </View>
+        <FlatList
+          data={workoutHistory}
+          keyExtractor={(w) => w.id}
+          renderItem={Card}
+          contentContainerStyle={styles.listWrap}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 

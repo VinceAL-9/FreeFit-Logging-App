@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeProvider';
 import { useWorkout } from '../context/WorkoutContext';
 
@@ -147,147 +148,149 @@ export default function ExerciseLibraryScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Exercise Library</Text>
-        <TouchableOpacity
-          style={[styles.createButton, { backgroundColor: colors.primary }]}
-          onPress={() => setShowCreateModal(true)}
-        >
-          <Text style={styles.createButtonText}>+ Create</Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Exercise Library</Text>
+          <TouchableOpacity
+            style={[styles.createButton, { backgroundColor: colors.primary }]}
+            onPress={() => setShowCreateModal(true)}
+          >
+            <Text style={styles.createButtonText}>+ Create</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={[styles.searchInput, { 
-            backgroundColor: colors.surface, 
-            borderColor: colors.border,
-            color: colors.text 
-          }]}
-          placeholder="Search exercises..."
-          placeholderTextColor={colors.textSecondary}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={[styles.searchInput, { 
+              backgroundColor: colors.surface, 
+              borderColor: colors.border,
+              color: colors.text 
+            }]}
+            placeholder="Search exercises..."
+            placeholderTextColor={colors.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
 
-      {/* Exercise List */}
-      <FlatList
-        data={categories}
-        keyExtractor={category => category}
-        contentContainerStyle={styles.listContainer}
-        renderItem={({ item: category }) => {
-          const categoryExercises = groupedExercises[category];
-          if (categoryExercises.length === 0) return null;
+        {/* Exercise List */}
+        <FlatList
+          data={categories}
+          keyExtractor={category => category}
+          contentContainerStyle={styles.listContainer}
+          renderItem={({ item: category }) => {
+            const categoryExercises = groupedExercises[category];
+            if (categoryExercises.length === 0) return null;
 
-          return (
-            <View style={styles.categorySection}>
-              <Text style={[styles.categoryTitle, { color: colors.primary }]}>
-                {category} ({categoryExercises.length})
-              </Text>
-              {categoryExercises.map((exercise, index) => (
-                <View key={exercise.name} style={[styles.exerciseItem, { backgroundColor: colors.surface }]}>
-                  <View style={styles.exerciseInfo}>
-                    <Text style={[styles.exerciseText, { color: colors.text }]}>{exercise.name}</Text>
-                    {exercise.isCustom && (
-                      <Text style={[styles.customBadge, { color: colors.info }]}>Custom</Text>
-                    )}
-                  </View>
-                  <View style={styles.exerciseActions}>
-                    <TouchableOpacity
-                      style={[styles.addButton, { backgroundColor: colors.primary }]}
-                      onPress={() => handleAdd(exercise)}
-                      >
-                      <Text style={[styles.addButtonText, { color: '#fff' }]}>Add</Text>
-                    </TouchableOpacity>
-
-                    {exercise.isCustom && (
+            return (
+              <View style={styles.categorySection}>
+                <Text style={[styles.categoryTitle, { color: colors.primary }]}>
+                  {category} ({categoryExercises.length})
+                </Text>
+                {categoryExercises.map((exercise, index) => (
+                  <View key={exercise.name} style={[styles.exerciseItem, { backgroundColor: colors.surface }]}>
+                    <View style={styles.exerciseInfo}>
+                      <Text style={[styles.exerciseText, { color: colors.text }]}>{exercise.name}</Text>
+                      {exercise.isCustom && (
+                        <Text style={[styles.customBadge, { color: colors.info }]}>Custom</Text>
+                      )}
+                    </View>
+                    <View style={styles.exerciseActions}>
                       <TouchableOpacity
-                        style={[styles.deleteButton, { backgroundColor: colors.error }]}
-                        onPress={() => handleDeleteCustomExercise(exercise.name)}
-                      >
-                        <Text style={styles.deleteButtonText}>×</Text>
+                        style={[styles.addButton, { backgroundColor: colors.primary }]}
+                        onPress={() => handleAdd(exercise)}
+                        >
+                        <Text style={[styles.addButtonText, { color: '#fff' }]}>Add</Text>
                       </TouchableOpacity>
-                    )}
+
+                      {exercise.isCustom && (
+                        <TouchableOpacity
+                          style={[styles.deleteButton, { backgroundColor: colors.error }]}
+                          onPress={() => handleDeleteCustomExercise(exercise.name)}
+                        >
+                          <Text style={styles.deleteButtonText}>×</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
-                </View>
-              ))}
-            </View>
-          );
-        }}
-      />
+                ))}
+              </View>
+            );
+          }}
+        />
 
-      {/* Create Exercise Modal */}
-      <Modal
-        visible={showCreateModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCreateModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Create Custom Exercise</Text>
-            
-            <TextInput
-              style={[styles.modalInput, { 
-                backgroundColor: colors.background, 
-                borderColor: colors.border,
-                color: colors.text 
-              }]}
-              placeholder="Exercise name"
-              placeholderTextColor={colors.textSecondary}
-              value={newExerciseName}
-              onChangeText={setNewExerciseName}
-              autoFocus
-            />
+        {/* Create Exercise Modal */}
+        <Modal
+          visible={showCreateModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowCreateModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Create Custom Exercise</Text>
+              
+              <TextInput
+                style={[styles.modalInput, { 
+                  backgroundColor: colors.background, 
+                  borderColor: colors.border,
+                  color: colors.text 
+                }]}
+                placeholder="Exercise name"
+                placeholderTextColor={colors.textSecondary}
+                value={newExerciseName}
+                onChangeText={setNewExerciseName}
+                autoFocus
+              />
 
-            <Text style={[styles.modalLabel, { color: colors.text }]}>Category:</Text>
-            <View style={styles.categoryGrid}>
-              {categories.map(category => (
-                <TouchableOpacity
-                  key={category}
-                  style={[
-                    styles.categoryButton,
-                    {
-                      backgroundColor: selectedCategory === category ? colors.primary : colors.background,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  onPress={() => setSelectedCategory(category)}
-                >
-                  <Text
+              <Text style={[styles.modalLabel, { color: colors.text }]}>Category:</Text>
+              <View style={styles.categoryGrid}>
+                {categories.map(category => (
+                  <TouchableOpacity
+                    key={category}
                     style={[
-                      styles.categoryButtonText,
-                      { color: selectedCategory === category ? '#fff' : colors.text },
+                      styles.categoryButton,
+                      {
+                        backgroundColor: selectedCategory === category ? colors.primary : colors.background,
+                        borderColor: colors.border,
+                      },
                     ]}
+                    onPress={() => setSelectedCategory(category)}
                   >
-                    {category}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <Text
+                      style={[
+                        styles.categoryButtonText,
+                        { color: selectedCategory === category ? '#fff' : colors.text },
+                      ]}
+                    >
+                      {category}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: colors.textSecondary }]}
-                onPress={() => setShowCreateModal(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: colors.success }]}
-                onPress={handleCreateExercise}
-              >
-                <Text style={styles.modalButtonText}>Create</Text>
-              </TouchableOpacity>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: colors.textSecondary }]}
+                  onPress={() => setShowCreateModal(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: colors.success }]}
+                  onPress={handleCreateExercise}
+                >
+                  <Text style={styles.modalButtonText}>Create</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
+    </SafeAreaView>
   );
 }
 
