@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -16,6 +17,7 @@ import {
   getQuickIncrements,
   getWeightIncrement
 } from '../utils/weightConversion';
+
 
 const formatTime = (secs: number) => {
   const m = Math.floor(secs / 60);
@@ -176,6 +178,16 @@ const QuickWeightButtons: React.FC<{
 
 /* ---------- Screen ---------- */
 export default function WorkoutSessionScreen() {
+  useEffect(() => {
+    // Prevent sleep while this screen is active
+    activateKeepAwakeAsync();
+    return () => {
+      // Allow normal screen sleep after leaving
+      deactivateKeepAwake();
+    };
+  }, []);
+
+  
   const {
     selectedExercises,
     addSetToExercise,
