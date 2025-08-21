@@ -535,11 +535,28 @@ export default function WorkoutSessionScreen() {
         {/* footer */}
         <View style={[styles.bottomActions, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           <TouchableOpacity
-            style={[styles.bottomButton, { backgroundColor: colors.textSecondary }]}
-            onPress={clearWorkout}
-          >
-            <Text style={styles.bottomButtonText}>Clear Workout</Text>
-          </TouchableOpacity>
+                style={[styles.bottomButton, { backgroundColor: colors.warning }]}
+                onPress={() =>
+                  Alert.alert(
+                    'Clear Workout',
+                    'Are you sure you want to clear all exercises and sets? This action cannot be undone.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Clear',
+                        style: 'destructive',
+                        onPress: () => {
+                          clearWorkout();
+                          showToast('Workout cleared', 'success');
+                        },
+                      },
+                    ]
+                  )
+                }
+               >
+              <Text style={styles.bottomButtonText}>Clear Workout</Text>
+            </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.bottomButton, { backgroundColor: colors.success }]}
             onPress={finish}
