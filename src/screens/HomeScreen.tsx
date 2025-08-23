@@ -5,7 +5,7 @@ import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeProvider';
 import { useWorkout } from '../context/WorkoutContext';
-import { calculateTotalVolumeForSets } from '../utils/weightConversion';
+import { calculateTotalVolumeForSets, formatLargeNumber } from '../utils/weightConversion';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -79,6 +79,7 @@ export default function HomeScreen() {
       }, 1500);
       return;
     }
+
     navigation.navigate('Workout' as never);
   };
 
@@ -101,6 +102,7 @@ export default function HomeScreen() {
       );
       return;
     }
+
     navigation.navigate('Library' as never);
   };
 
@@ -108,53 +110,41 @@ export default function HomeScreen() {
   const lastWorkout = getLastWorkout();
   const hasActiveWorkout = selectedExercises.length > 0;
 
-  
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={styles.contentContainer}
-      >
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView style={styles.contentContainer}>
         {/* Branded Header */}
         <View style={styles.header}>
-          <Image 
-            source={require('../../assets/images/freefit-logo.png')} 
+          <Image
+            source={require('../../assets/images/freefit-logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Log your workouts and track your progress
           </Text>
         </View>
 
         {/* Current Workout Status */}
         {hasActiveWorkout ? (
-          <View
-            style={[
-              styles.activeWorkoutCard,
-              {
-                backgroundColor: colors.primaryLight + '20',
-                borderLeftColor: colors.primary,
-              },
-            ]}
-          >
+          <View style={[styles.activeWorkoutCard, { backgroundColor: colors.surface, borderLeftColor: colors.primary }]}>
             <View style={styles.activeWorkoutHeader}>
-              <Text style={[styles.activeWorkoutTitle, { color: colors.primary, fontFamily: fonts.heading }]}>
+              <Text style={[styles.activeWorkoutTitle, { color: colors.text }]}>
                 🏋️ Active Workout
               </Text>
               {isRestTimerActive ? (
                 <View style={[styles.restTimerBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={[styles.restTimerText, { fontFamily: fonts.bodyBold }]}>
+                  <Text style={styles.restTimerText}>
                     Rest: {formatTime(restTimeRemaining)}
                   </Text>
                 </View>
               ) : null}
             </View>
-            <Text style={[styles.activeWorkoutInfo, { color: colors.text, fontFamily: fonts.body }]}>
+            <Text style={[styles.activeWorkoutInfo, { color: colors.text }]}>
               {selectedExercises.length} exercises • {getTotalSets(selectedExercises)} sets
             </Text>
             {workoutTimeCheck(workoutStartTime) ? (
-              <Text style={[styles.activeWorkoutDuration, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+              <Text style={[styles.activeWorkoutDuration, { color: colors.textSecondary }]}>
                 Duration: {getWorkoutDuration()}
               </Text>
             ) : null}
@@ -162,7 +152,7 @@ export default function HomeScreen() {
               style={[styles.continueButton, { backgroundColor: colors.primary }]}
               onPress={handleContinue}
             >
-              <Text style={[styles.continueButtonText, { fontFamily: fonts.bodyBold }]}>Continue Workout</Text>
+              <Text style={styles.continueButtonText}>Continue Workout</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -170,41 +160,57 @@ export default function HomeScreen() {
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity
-            style={[styles.actionButton, styles.primaryAction, { backgroundColor: colors.primary }]}
+            style={[
+              styles.actionButton,
+              styles.primaryAction,
+              { backgroundColor: colors.primary },
+            ]}
             onPress={handleNewWorkout}
           >
-            <Text style={styles.actionButtonIcon}>💪</Text>
-            <Text style={[styles.actionButtonText, { color: '#fff', fontFamily: fonts.heading }]}>
+            <Text style={[styles.actionButtonIcon, { color: '#fff' }]}>🏋️‍♂️</Text>
+            <Text style={[styles.actionButtonText, { color: '#fff' }]}>
               {hasActiveWorkout ? 'New Workout' : 'Start Workout'}
             </Text>
           </TouchableOpacity>
-
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            style={[
+              styles.actionButton,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
             onPress={() => navigation.navigate('History' as never)}
           >
-            <Text style={styles.actionButtonIcon}>📊</Text>
-            <Text style={[styles.actionButtonText, { color: colors.text, fontFamily: fonts.heading }]}>View History</Text>
+            <Text style={[styles.actionButtonIcon, { color: colors.primary }]}>📊</Text>
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>
+              View History
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Weekly Stats */}
         <View style={[styles.statsCard, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.statsTitle, { color: colors.text, fontFamily: fonts.heading }]}>This Week</Text>
+          <Text style={[styles.statsTitle, { color: colors.text }]}>This Week</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.primary, fontFamily: fonts.brand }]}>{weeklyStats.workouts}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>Workouts</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.primary, fontFamily: fonts.brand }]}>{weeklyStats.sets}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>Sets</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.primary, fontFamily: fonts.brand }]}>
-                {weeklyStats.volume.toFixed(0)}
+              <Text style={[styles.statNumber, { color: colors.primary }]}>
+                {weeklyStats.workouts}
               </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                Workouts
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>
+                {weeklyStats.sets}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                Sets
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, { color: colors.primary }]} numberOfLines={1} ellipsizeMode="tail">
+                {formatLargeNumber(weeklyStats.volume)}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                 {settings.weightUnit} Volume
               </Text>
             </View>
@@ -214,11 +220,13 @@ export default function HomeScreen() {
         {/* Recent Workout */}
         {lastWorkout ? (
           <View style={[styles.recentCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.recentTitle, { color: colors.text, fontFamily: fonts.heading }]}>Last Workout</Text>
+            <Text style={[styles.recentTitle, { color: colors.text }]}>Last Workout</Text>
             <View style={styles.recentWorkout}>
               <View style={styles.recentWorkoutInfo}>
-                <Text style={[styles.recentWorkoutName, { color: colors.text, fontFamily: fonts.bodyMedium }]}>{lastWorkout.name}</Text>
-                <Text style={[styles.recentWorkoutDate, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+                <Text style={[styles.recentWorkoutName, { color: colors.text }]}>
+                  {lastWorkout.name}
+                </Text>
+                <Text style={[styles.recentWorkoutDate, { color: colors.textSecondary }]}>
                   {new Date(lastWorkout.date).toLocaleDateString('en-US', {
                     weekday: 'short',
                     month: 'short',
@@ -227,23 +235,24 @@ export default function HomeScreen() {
                 </Text>
               </View>
               <View style={styles.recentWorkoutStats}>
-                <Text style={[styles.recentStat, { color: colors.primary, fontFamily: fonts.bodyMedium }]}>
+                <Text style={[styles.recentStat, { color: colors.primary }]}>
                   {getTotalSets(lastWorkout.exercises)} sets
                 </Text>
                 {lastWorkout.duration ? (
-                  <Text style={[styles.recentStat, { color: colors.primary, fontFamily: fonts.bodyMedium }]}>{lastWorkout.duration}m</Text>
+                  <Text style={[styles.recentStat, { color: colors.textSecondary }]}>
+                    {lastWorkout.duration}m
+                  </Text>
                 ) : null}
               </View>
             </View>
-
             <View style={styles.recentExercises}>
               {lastWorkout.exercises.slice(0, 3).map((exercise, i) => (
-                <Text key={i} style={[styles.recentExercise, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+                <Text key={i} style={[styles.recentExercise, { color: colors.textSecondary }]}>
                   • {exercise.name}
                 </Text>
               ))}
               {lastWorkout.exercises.length > 3 ? (
-                <Text style={[styles.recentExercise, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+                <Text style={[styles.recentExercise, { color: colors.textSecondary }]}>
                   • +{lastWorkout.exercises.length - 3} more
                 </Text>
               ) : null}
@@ -253,47 +262,54 @@ export default function HomeScreen() {
 
         {/* Exercise Library Preview */}
         <View style={[styles.libraryPreview, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.libraryTitle, { color: colors.text, fontFamily: fonts.heading }]}>Exercise Library</Text>
+          <Text style={[styles.libraryTitle, { color: colors.text }]}>Exercise Library</Text>
           <View style={styles.libraryGrid}>
             <View style={[styles.libraryItem, { backgroundColor: colors.background }]}>
-              <Text style={styles.exerciseIcon}>🏋️</Text>
-              <Text style={[styles.exerciseName, { color: colors.text, fontFamily: fonts.body }]}>Bench Press</Text>
+              <Text style={[styles.exerciseIcon, { color: colors.primary }]}>🏋️</Text>
+              <Text style={[styles.exerciseName, { color: colors.text }]}>
+                Bench Press
+              </Text>
             </View>
             <View style={[styles.libraryItem, { backgroundColor: colors.background }]}>
-              <Text style={styles.exerciseIcon}>🦵</Text>
-              <Text style={[styles.exerciseName, { color: colors.text, fontFamily: fonts.body }]}>Squat</Text>
+              <Text style={[styles.exerciseIcon, { color: colors.primary }]}>🦵</Text>
+              <Text style={[styles.exerciseName, { color: colors.text }]}>
+                Squat
+              </Text>
             </View>
             <View style={[styles.libraryItem, { backgroundColor: colors.background }]}>
-              <Text style={styles.exerciseIcon}>💪</Text>
-              <Text style={[styles.exerciseName, { color: colors.text, fontFamily: fonts.body }]}>Deadlift</Text>
+              <Text style={[styles.exerciseIcon, { color: colors.primary }]}>💪</Text>
+              <Text style={[styles.exerciseName, { color: colors.text }]}>
+                Deadlift
+              </Text>
             </View>
             <TouchableOpacity
-              style={[styles.libraryItem, { backgroundColor: colors.background }]}
+              style={[styles.libraryItem, { backgroundColor: colors.primary }]}
               onPress={() => navigation.navigate('Library' as never)}
             >
-              <Text style={styles.exerciseIcon}>➕</Text>
-              <Text style={[styles.exerciseName, { color: colors.text, fontFamily: fonts.body }]}>View All</Text>
+              <Text style={[styles.exerciseIcon, { color: '#fff' }]}>➕</Text>
+              <Text style={[styles.exerciseName, { color: '#fff' }]}>
+                View All
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+          <Text style={[styles.footerText, { color: colors.textSecondary }]}>
             {workoutHistory.length > 0 ? `${workoutHistory.length} total workouts completed` : 'Start your first workout to see progress!'}
           </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
-  
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   contentContainer: { padding: 20 },
-  header: { 
-    alignItems: 'center', 
+  header: {
+    alignItems: 'center',
     marginBottom: 30,
   },
   logo: {
@@ -301,13 +317,13 @@ const styles = StyleSheet.create({
     height: 80,
     marginBottom: 10,
   },
-  subtitle: { 
+  subtitle: {
     fontSize: 16,
   },
-  activeWorkoutCard: { 
-    borderRadius: 16, 
-    padding: 20, 
-    marginBottom: 24, 
+  activeWorkoutCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
     borderLeftWidth: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -315,47 +331,47 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  activeWorkoutHeader: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: 12 
+  activeWorkoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
   },
-  activeWorkoutTitle: { 
-    fontSize: 20, 
-    fontWeight: 'bold' 
+  activeWorkoutTitle: {
+    fontSize: 20,
+    fontWeight: 'bold'
   },
-  restTimerBadge: { 
-    paddingHorizontal: 12, 
-    paddingVertical: 6, 
-    borderRadius: 20 
+  restTimerBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20
   },
-  restTimerText: { 
-    color: '#fff', 
-    fontSize: 12 
+  restTimerText: {
+    color: '#fff',
+    fontSize: 12
   },
-  activeWorkoutInfo: { 
-    fontSize: 16, 
-    marginBottom: 6 
+  activeWorkoutInfo: {
+    fontSize: 16,
+    marginBottom: 6
   },
-  activeWorkoutDuration: { 
-    fontSize: 14, 
-    marginBottom: 16 
+  activeWorkoutDuration: {
+    fontSize: 14,
+    marginBottom: 16
   },
-  continueButton: { 
-    paddingVertical: 14, 
-    paddingHorizontal: 24, 
-    borderRadius: 12, 
-    alignSelf: 'flex-start' 
+  continueButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignSelf: 'flex-start'
   },
-  continueButtonText: { 
-    color: '#fff', 
-    fontSize: 16 
+  continueButtonText: {
+    color: '#fff',
+    fontSize: 16
   },
-  quickActions: { 
-    flexDirection: 'row', 
-    gap: 16, 
-    marginBottom: 24 
+  quickActions: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 24
   },
   actionButton: {
     flex: 1,
@@ -370,131 +386,131 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   primaryAction: { borderWidth: 0 },
-  actionButtonIcon: { 
-    fontSize: 28, 
-    marginBottom: 12 
+  actionButtonIcon: {
+    fontSize: 28,
+    marginBottom: 12
   },
-  actionButtonText: { 
-    fontSize: 16, 
-    fontWeight: '600' 
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600'
   },
-  statsCard: { 
-    borderRadius: 16, 
-    padding: 24, 
-    marginBottom: 24, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 8, 
-    elevation: 4 
+  statsCard: {
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4
   },
-  statsTitle: { 
-    fontSize: 20, 
-    fontWeight: 'bold', 
-    marginBottom: 20 
+  statsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20
   },
-  statsGrid: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-around' 
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around'
   },
-  statItem: { 
-    alignItems: 'center' 
+  statItem: {
+    alignItems: 'center'
   },
-  statNumber: { 
-    fontSize: 32, 
-    fontWeight: 'bold' 
+  statNumber: {
+    fontSize: 32,
+    fontWeight: 'bold'
   },
-  statLabel: { 
-    fontSize: 14, 
-    marginTop: 6 
+  statLabel: {
+    fontSize: 14,
+    marginTop: 6
   },
-  recentCard: { 
-    borderRadius: 16, 
-    padding: 24, 
-    marginBottom: 24, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 8, 
-    elevation: 4 
+  recentCard: {
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4
   },
-  recentTitle: { 
-    fontSize: 20, 
-    fontWeight: 'bold', 
-    marginBottom: 16 
+  recentTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16
   },
-  recentWorkout: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: 12 
+  recentWorkout: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
   },
-  recentWorkoutInfo: { 
-    flex: 1 
+  recentWorkoutInfo: {
+    flex: 1
   },
-  recentWorkoutName: { 
-    fontSize: 18, 
-    fontWeight: '600' 
+  recentWorkoutName: {
+    fontSize: 18,
+    fontWeight: '600'
   },
-  recentWorkoutDate: { 
-    fontSize: 14 
+  recentWorkoutDate: {
+    fontSize: 14
   },
-  recentWorkoutStats: { 
-    alignItems: 'flex-end' 
+  recentWorkoutStats: {
+    alignItems: 'flex-end'
   },
-  recentStat: { 
-    fontSize: 14, 
-    fontWeight: '600' 
+  recentStat: {
+    fontSize: 14,
+    fontWeight: '600'
   },
-  recentExercises: { 
-    marginTop: 12 
+  recentExercises: {
+    marginTop: 12
   },
-  recentExercise: { 
-    fontSize: 16, 
-    marginBottom: 4 
+  recentExercise: {
+    fontSize: 16,
+    marginBottom: 4
   },
-  libraryPreview: { 
-    borderRadius: 16, 
-    padding: 24, 
-    marginBottom: 24, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 8, 
-    elevation: 4 
+  libraryPreview: {
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4
   },
-  libraryTitle: { 
-    fontSize: 20, 
-    fontWeight: 'bold', 
-    marginBottom: 20 
+  libraryTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20
   },
-  libraryGrid: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    gap: 12 
+  libraryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
   },
-  libraryItem: { 
-    flex: 1, 
-    minWidth: '45%', 
-    alignItems: 'center', 
-    padding: 16, 
-    borderRadius: 12 
+  libraryItem: {
+    flex: 1,
+    minWidth: '45%',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12
   },
-  exerciseIcon: { 
-    fontSize: 24, 
-    marginBottom: 8 
+  exerciseIcon: {
+    fontSize: 24,
+    marginBottom: 8
   },
-  exerciseName: { 
-    fontSize: 14, 
-    textAlign: 'center' 
+  exerciseName: {
+    fontSize: 14,
+    textAlign: 'center'
   },
-  footer: { 
-    alignItems: 'center', 
-    marginTop: 24, 
-    paddingBottom: 24 
+  footer: {
+    alignItems: 'center',
+    marginTop: 24,
+    paddingBottom: 24
   },
-  footerText: { 
-    fontSize: 16, 
-    textAlign: 'center' 
+  footerText: {
+    fontSize: 16,
+    textAlign: 'center'
   },
 });

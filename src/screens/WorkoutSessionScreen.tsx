@@ -18,7 +18,6 @@ import {
   getWeightIncrement
 } from '../utils/weightConversion';
 
-
 const formatTime = (secs: number) => {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
@@ -31,17 +30,15 @@ const UnitToggle: React.FC<{
   onUnitChange: (u: 'kg' | 'lbs') => void;
 }> = ({ unit, onUnitChange }) => {
   const { colors } = useTheme();
+
   return (
-    <View style={styles.unitToggleContainer}>
+    <View style={[styles.unitToggleContainer, { borderColor: colors.border }]}>
       {(['kg', 'lbs'] as const).map((u) => (
         <TouchableOpacity
           key={u}
           style={[
             styles.unitToggleButton,
-            {
-              backgroundColor: unit === u ? colors.primary : colors.background,
-              borderColor: colors.border,
-            },
+            { backgroundColor: unit === u ? colors.primary : 'transparent' },
           ]}
           onPress={() => onUnitChange(u)}
         >
@@ -83,6 +80,7 @@ const IncrementInput: React.FC<{
     onValueChange(
       Math.min((parseFloat(value) || 0) + step, max).toString(),
     );
+
   const dec = () =>
     onValueChange(
       Math.max((parseFloat(value) || 0) - step, min).toString(),
@@ -92,48 +90,33 @@ const IncrementInput: React.FC<{
     /^\d*\.?\d*$/.test(t) && onValueChange(t);
 
   return (
-    <View style={[styles.incrementContainer, { borderColor: colors.border }]}>
-      <Text style={[styles.incrementLabel, { color: colors.text }]}>
-        {label}
-      </Text>
-
+    <View style={[styles.incrementContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text style={[styles.incrementLabel, { color: colors.text }]}>{label}</Text>
       <View style={styles.incrementRow}>
         <TouchableOpacity
-          style={[
-            styles.incrementButton,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
+          style={[styles.incrementButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
           onPress={dec}
         >
-          <Text style={[styles.incrementButtonText, { color: colors.text }]}>
-            −
-          </Text>
+          <Text style={[styles.incrementButtonText, { color: colors.text }]}>-</Text>
         </TouchableOpacity>
-
         <TextInput
+          style={[
+            styles.incrementInput,
+            { borderColor: colors.border, backgroundColor: colors.background, color: colors.text },
+          ]}
           value={value}
           onChangeText={onChange}
           keyboardType="numeric"
-          style={[
-            styles.incrementInput,
-            { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
-          ]}
-          textAlign="center"
+          placeholder="0"
+          placeholderTextColor={colors.textSecondary}
         />
-
         <TouchableOpacity
-          style={[
-            styles.incrementButton,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
+          style={[styles.incrementButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
           onPress={inc}
         >
-          <Text style={[styles.incrementButtonText, { color: colors.text }]}>
-            +
-          </Text>
+          <Text style={[styles.incrementButtonText, { color: colors.text }]}>+</Text>
         </TouchableOpacity>
       </View>
-
       {suffix ? (
         <Text style={[styles.incrementSuffix, { color: colors.textSecondary }]}>
           {suffix}
@@ -154,7 +137,7 @@ const QuickWeightButtons: React.FC<{
 
   return (
     <View style={styles.quickButtonsContainer}>
-      <Text style={[styles.quickButtonsLabel, { color: colors.text }]}>
+      <Text style={[styles.quickButtonsLabel, { color: colors.textSecondary }]}>
         Quick add:
       </Text>
       <View style={styles.quickButtonsRow}>
@@ -187,11 +170,11 @@ export default function WorkoutSessionScreen() {
     };
   }, []);
 
-  
   const {
     selectedExercises,
     addSetToExercise,
     removeSetFromExercise,
+    removeExercise,
     editSetInExercise,
     finishWorkout,
     clearWorkout,
@@ -203,6 +186,7 @@ export default function WorkoutSessionScreen() {
     showToast,
     settings,
   } = useWorkout();
+
   const { colors } = useTheme();
 
   /* local state */
@@ -221,16 +205,14 @@ export default function WorkoutSessionScreen() {
 
   /* helpers */
   const lastSetInfo = (name: string) => {
-  const hist = getExerciseHistory(name);
+    const hist = getExerciseHistory(name);
     if (hist.length > 0 && hist[0].sets.length > 0) {
-      const session = hist[0];                      // Access first element of array
+      const session = hist[0]; // Access first element of array
       const ls = session.sets[session.sets.length - 1];
       return `Last: ${ls.reps} reps @ ${ls.weight}${ls.unit}`;
     }
     return 'No previous data';
   };
-
-
 
   /* actions */
   const addSet = (ex: string) => {
@@ -242,6 +224,33 @@ export default function WorkoutSessionScreen() {
       setWt('');
       setActiveEx(null);
     } else showToast('Enter valid reps/weight', 'error');
+  };
+
+  const handleDeleteExercise = (exerciseName: string) => {
+    Alert.alert(
+      'Delete Exercise',
+      `Are you sure you want to remove "${exerciseName}" from your workout? All sets for this exercise will be lost.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            removeExercise(exerciseName);
+            // Clear any active states for this exercise
+            if (activeEx === exerciseName) {
+              setActiveEx(null);
+            }
+            if (editMode?.exerciseName === exerciseName) {
+              setEditMode(null);
+            }
+            if (showHist === exerciseName) {
+              setShowHist(null);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const finish = () =>
@@ -259,7 +268,7 @@ export default function WorkoutSessionScreen() {
   /* empty state */
   if (!selectedExercises.length) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.emptyContainer}>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
             No Exercises Selected
@@ -268,207 +277,249 @@ export default function WorkoutSessionScreen() {
             Add exercises from the library to start.
           </Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   /* main render */
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* header */}
-        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <View style={styles.workoutInfo}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Current Workout</Text>
-            {workoutStartTime && (
-              <Text style={[styles.workoutDuration, { color: colors.textSecondary }]}>
-                Started: {workoutStartTime.toLocaleTimeString()}
-              </Text>
-            )}
-          </View>
-
-          {isRestTimerActive && (
-            <View style={[styles.restTimer, { backgroundColor: colors.warning, borderColor: colors.border }]}>
-              <Text style={[styles.restTimerText, { color: colors.text }]}>
-                Rest: {formatTime(restTimeRemaining)}
-              </Text>
-              <TouchableOpacity
-                style={[styles.stopTimerButton, { backgroundColor: colors.error }]}
-                onPress={stopRestTimer}
-              >
-                <Text style={styles.stopTimerButtonText}>Stop</Text>
-              </TouchableOpacity>
-            </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View style={styles.workoutInfo}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Current Workout
+          </Text>
+          {workoutStartTime && (
+            <Text style={[styles.workoutDuration, { color: colors.textSecondary }]}>
+              Started: {workoutStartTime.toLocaleTimeString()}
+            </Text>
           )}
         </View>
+        {isRestTimerActive && (
+          <View style={[styles.restTimer, { backgroundColor: colors.primary, borderColor: colors.border }]}>
+            <Text style={[styles.restTimerText, { color: '#fff' }]}>
+              Rest: {formatTime(restTimeRemaining)}
+            </Text>
+            <TouchableOpacity
+              style={[styles.stopTimerButton, { backgroundColor: colors.primaryDark }]}
+              onPress={stopRestTimer}
+            >
+              <Text style={styles.stopTimerButtonText}>Stop</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
 
-        {/* exercise list */}
-        <FlatList
-          data={selectedExercises}
-          keyExtractor={(it) => it.name}
-          contentContainerStyle={{ padding: 16 }}
-          renderItem={({ item }) => {
-            const isActive = activeEx === item.name;
-            const isEditing = editMode?.exerciseName === item.name;
+      {/* exercise list */}
+      <FlatList
+        data={selectedExercises}
+        keyExtractor={it => it.name}
+        contentContainerStyle={{ padding: 16 }}
+        renderItem={({ item }) => {
+          const isActive = activeEx === item.name;
+          const isEditing = editMode?.exerciseName === item.name;
 
-            return (
-              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                {/* header row */}
-                <View style={styles.exerciseHeader}>
-                  <Text style={[styles.exerciseName, { color: colors.text }]}>{item.name}</Text>
+          return (
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              {/* header row */}
+              <View style={styles.exerciseHeader}>
+                <Text 
+                  style={[styles.exerciseName, { color: colors.text }]} 
+                  numberOfLines={1} 
+                  ellipsizeMode="tail"
+                >
+                  {item.name}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TouchableOpacity
                     style={[styles.historyButton, { backgroundColor: colors.primary }]}
                     onPress={() => setShowHist(showHist === item.name ? null : item.name)}
-                      >
+                  >
                     <Text style={styles.historyButtonText}>
                       {showHist === item.name ? 'Hide' : 'History'}
                     </Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.historyButton, { backgroundColor: colors.error }]}
+                    onPress={() => handleDeleteExercise(item.name)}
+                  >
+                    <Text style={styles.historyButtonText}>Delete</Text>
+                  </TouchableOpacity>
                 </View>
+              </View>
 
-                {/* history collapse */}
-                {showHist === item.name && (
-                  <View style={[styles.historyContainer, { backgroundColor: colors.background }]}>
-                    <Text style={[styles.historyTitle, { color: colors.text }]}>Previous Sessions:</Text>
-                    {getExerciseHistory(item.name).slice(0, 3).map((s, i) => (
-                      <View key={i} style={styles.historySession}>
-                        <Text style={[styles.historySessionTitle, { color: colors.text }]}>
-                          Session {i + 1}:
-                        </Text>
-                        {s.sets.map((st, si) => (
-                          <Text
-                            key={si}
-                            style={[styles.historySet, { color: colors.textSecondary }]}
-                          >
-                            {st.reps} reps @ {st.weight}{st.unit}
-                          </Text>
-                        ))}
-                      </View>
-                    ))}
-                    {!getExerciseHistory(item.name).length && (
-                      <Text style={[styles.noHistory, { color: colors.textSecondary }]}>
-                        No previous data
+              {/* history collapse */}
+              {showHist === item.name && (
+                <View style={[styles.historyContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <Text style={[styles.historyTitle, { color: colors.text }]}>
+                    Previous Sessions:
+                  </Text>
+                  {getExerciseHistory(item.name).slice(0, 3).map((s, i) => (
+                    <View key={i} style={styles.historySession}>
+                      <Text style={[styles.historySessionTitle, { color: colors.textSecondary }]}>
+                        Session {i + 1}:
                       </Text>
-                    )}
+                      {s.sets.map((st, si) => (
+                        <Text key={si} style={[styles.historySet, { color: colors.textSecondary }]}>
+                          {st.reps} reps @ {st.weight}{st.unit}
+                        </Text>
+                      ))}
+                    </View>
+                  ))}
+                  {!getExerciseHistory(item.name).length && (
+                    <Text style={[styles.noHistory, { color: colors.textSecondary }]}>
+                      No previous data
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              {/* current sets list */}
+              {item.sets.map((st, idx) => {
+                // Calculate volume in user's preferred unit for display
+                const setVolumeInPreferredUnit = calculateSetVolume(
+                  st.reps,
+                  st.weight,
+                  st.unit,
+                  settings.weightUnit
+                );
+
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[styles.setItem, { backgroundColor: colors.background }]}
+                    onPress={() =>
+                      Alert.alert(
+                        `Set ${idx + 1}`,
+                        `${st.reps} reps @ ${st.weight}${st.unit} (Vol: ${setVolumeInPreferredUnit.toFixed(1)}${settings.weightUnit})`,
+                        [
+                          {
+                            text: 'Edit',
+                            onPress: () => {
+                              setEditMode({ exerciseName: item.name, setIndex: idx });
+                              setEditReps(st.reps.toString());
+                              setEditWt(st.weight.toString());
+                              setEditUnit(st.unit);
+                            },
+                          },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: () => removeSetFromExercise(item.name, idx),
+                          },
+                          { text: 'Cancel', style: 'cancel' },
+                        ],
+                      )
+                    }
+                  >
+                    <Text style={[styles.setText, { color: colors.text }]}>
+                      Set {idx + 1}: {st.reps} reps @ {st.weight}{st.unit}
+                      {' '}(Vol: {setVolumeInPreferredUnit.toFixed(1)}{settings.weightUnit})
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+
+              {/* edit mode */}
+              {isEditing && (
+                <View style={[styles.editContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <Text style={[styles.editTitle, { color: colors.text }]}>
+                    Editing Set {editMode!.setIndex + 1}
+                  </Text>
+
+                  <UnitToggle unit={editUnit} onUnitChange={setEditUnit} />
+
+                  <View style={styles.enhancedInputColumn}>
+                    <IncrementInput
+                      value={editReps}
+                      onValueChange={setEditReps}
+                      step={1}
+                      min={1}
+                      max={200}
+                      label="Reps"
+                    />
+                    <IncrementInput
+                      value={editWt}
+                      onValueChange={setEditWt}
+                      step={getWeightIncrement(editUnit)}
+                      min={0}
+                      max={2000}
+                      label="Weight"
+                      suffix={editUnit}
+                    />
                   </View>
-                )}
 
-                {/* current sets list */}
-                {item.sets.map((st, idx) => {
-                  // Calculate volume in user's preferred unit for display
-                  const setVolumeInPreferredUnit = calculateSetVolume(
-                    st.reps, 
-                    st.weight, 
-                    st.unit, 
-                    settings.weightUnit
-                  );
-
-                  return (
+                  <View style={styles.editActions}>
                     <TouchableOpacity
-                      key={idx}
-                      style={[styles.setItem, { backgroundColor: colors.background }]}
-                      onPress={() =>
-                        Alert.alert(
-                          `Set ${idx + 1}`,
-                          `${st.reps} reps @ ${st.weight}${st.unit} (Vol: ${setVolumeInPreferredUnit.toFixed(1)}${settings.weightUnit})`,
-                          [
-                            {
-                              text: 'Edit',
-                              onPress: () => {
-                                setEditMode({ exerciseName: item.name, setIndex: idx });
-                                setEditReps(st.reps.toString());
-                                setEditWt(st.weight.toString());
-                                setEditUnit(st.unit);
-                              },
-                            },
-                            {
-                              text: 'Delete',
-                              style: 'destructive',
-                              onPress: () => removeSetFromExercise(item.name, idx),
-                            },
-                            { text: 'Cancel', style: 'cancel' },
-                          ],
-                        )
-                      }
+                      style={[styles.actionButton, { backgroundColor: colors.success }]}
+                      onPress={() => {
+                        const r = parseInt(editReps, 10);
+                        const w = parseFloat(editWt);
+                        if (r > 0 && w >= 0) {
+                          editSetInExercise(
+                            item.name,
+                            editMode!.setIndex,
+                            r,
+                            w,
+                            editUnit,
+                          );
+                          setEditMode(null);
+                          setEditReps('');
+                          setEditWt('');
+                        } else showToast('Enter valid values', 'error');
+                      }}
                     >
-                      <Text style={[styles.setText, { color: colors.text }]}>
-                        Set {idx + 1}: {st.reps} reps @ {st.weight}{st.unit}
-                        <Text style={[styles.setText, { color: colors.textSecondary, fontSize: 12 }]}>
-                          {' '}(Vol: {setVolumeInPreferredUnit.toFixed(1)}{settings.weightUnit})
-                        </Text>
-                      </Text>
+                      <Text style={styles.actionButtonText}>Save</Text>
                     </TouchableOpacity>
-                  );
-                })}
-
-                {/* edit mode */}
-                {isEditing && (
-                  <View style={[styles.editContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                    <Text style={[styles.editTitle, { color: colors.text }]}>
-                      Editing Set {editMode!.setIndex + 1}
-                    </Text>
-
-                    <UnitToggle unit={editUnit} onUnitChange={setEditUnit} />
-
-                    <View style={styles.enhancedInputColumn}>
-                      <IncrementInput
-                        value={editReps}
-                        onValueChange={setEditReps}
-                        label="Reps"
-                        min={1}
-                        max={100}
-                      />
-                      <IncrementInput
-                        value={editWt}
-                        onValueChange={setEditWt}
-                        label="Weight"
-                        suffix={editUnit}
-                        step={getWeightIncrement(editUnit)}
-                        max={500}
-                      />
-                    </View>
-
-                    <View style={styles.editActions}>
-                      <TouchableOpacity
-                        style={[styles.actionButton, { backgroundColor: colors.success }]}
-                        onPress={() => {
-                          const r = parseInt(editReps, 10);
-                          const w = parseFloat(editWt);
-                          if (r > 0 && w >= 0) {
-                            editSetInExercise(
-                              item.name,
-                              editMode!.setIndex,
-                              r,
-                              w,
-                              editUnit,
-                            );
-                            setEditMode(null);
-                            setEditReps('');
-                            setEditWt('');
-                          } else showToast('Enter valid values', 'error');
-                        }}
-                      >
-                        <Text style={styles.actionButtonText}>Save</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.actionButton, { backgroundColor: colors.textSecondary }]}
-                        onPress={() => setEditMode(null)}
-                      >
-                        <Text style={styles.actionButtonText}>Cancel</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-
-                {/* add-set area */}
-                {isActive && !isEditing && (
-                  <View style={[styles.addSetContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                    <Text style={[styles.lastSetInfo, { color: colors.textSecondary }]}>
-                      {lastSetInfo(item.name)}
-                    </Text>
-
                     <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                      style={[styles.actionButton, { backgroundColor: colors.textSecondary }]}
+                      onPress={() => setEditMode(null)}
+                    >
+                      <Text style={styles.actionButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* add-set area */}
+              {isActive && !isEditing && (
+                <View style={[styles.addSetContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <Text style={[styles.lastSetInfo, { color: colors.textSecondary }]}>
+                    {lastSetInfo(item.name)}
+                  </Text>
+
+                  <UnitToggle unit={addUnit} onUnitChange={setAddUnit} />
+
+                  <View style={styles.enhancedInputColumn}>
+                    <IncrementInput
+                      value={reps}
+                      onValueChange={setReps}
+                      step={1}
+                      min={1}
+                      max={200}
+                      label="Reps"
+                    />
+                    <IncrementInput
+                      value={wt}
+                      onValueChange={setWt}
+                      step={getWeightIncrement(addUnit)}
+                      min={0}
+                      max={2000}
+                      label="Weight"
+                      suffix={addUnit}
+                    />
+                  </View>
+
+                  <QuickWeightButtons
+                    currentWeight={wt}
+                    onWeightChange={setWt}
+                    unit={addUnit}
+                  />
+
+                  <View style={styles.addSetActions}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: colors.info }]}
                       onPress={() => {
                         const h = getExerciseHistory(item.name);
                         if (h.length > 0 && h[0].sets.length > 0) {
@@ -479,31 +530,9 @@ export default function WorkoutSessionScreen() {
                           setAddUnit(ls.unit);
                         }
                       }}
-                        >
+                    >
                       <Text style={styles.actionButtonText}>Fill Last</Text>
                     </TouchableOpacity>
-
-
-                    <UnitToggle unit={addUnit} onUnitChange={setAddUnit} />
-
-                    <View style={styles.enhancedInputColumn}>
-                      <IncrementInput value={reps} onValueChange={setReps} label="Reps" min={1} />
-                      <IncrementInput
-                        value={wt}
-                        onValueChange={setWt}
-                        label="Weight"
-                        suffix={addUnit}
-                        step={getWeightIncrement(addUnit)}
-                        max={500}
-                      />
-                    </View>
-
-                    <QuickWeightButtons
-                      currentWeight={wt}
-                      onWeightChange={setWt}
-                      unit={addUnit}
-                    />
-
                     <TouchableOpacity
                       style={[styles.actionButton, { backgroundColor: colors.success }]}
                       onPress={() => addSet(item.name)}
@@ -511,59 +540,53 @@ export default function WorkoutSessionScreen() {
                       <Text style={styles.actionButtonText}>Add Set</Text>
                     </TouchableOpacity>
                   </View>
-                )}
+                </View>
+              )}
 
-                {/* toggle button */}
-                <TouchableOpacity
-                  style={[
-                    styles.toggleButton,
-                    { backgroundColor: isActive ? colors.textSecondary : colors.primary },
-                  ]}
-                  onPress={() =>
-                    setActiveEx(isActive ? null : item.name)
-                  }
-                >
-                  <Text style={styles.toggleButtonText}>
-                    {isActive ? 'Cancel' : 'Add Set'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            );
-          }}
-        />
+              {/* toggle button */}
+              <TouchableOpacity
+                style={[styles.toggleButton, { backgroundColor: isActive ? colors.textSecondary : colors.primary }]}
+                onPress={() => setActiveEx(isActive ? null : item.name)}
+              >
+                <Text style={styles.toggleButtonText}>
+                  {isActive ? 'Cancel' : 'Add Set'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          );
+        }}
+      />
 
-        {/* footer */}
-        <View style={[styles.bottomActions, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-          <TouchableOpacity
-                style={[styles.bottomButton, { backgroundColor: colors.warning }]}
-                onPress={() =>
-                  Alert.alert(
-                    'Clear Workout',
-                    'Are you sure you want to clear all exercises and sets? This action cannot be undone.',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Clear',
-                        style: 'destructive',
-                        onPress: () => {
-                          clearWorkout();
-                          showToast('Workout cleared', 'success');
-                        },
-                      },
-                    ]
-                  )
-                }
-               >
-              <Text style={styles.bottomButtonText}>Clear Workout</Text>
-            </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.bottomButton, { backgroundColor: colors.success }]}
-            onPress={finish}
-          >
-            <Text style={styles.bottomButtonText}>Finish Workout</Text>
-          </TouchableOpacity>
-        </View>
+      {/* footer */}
+      <View style={[styles.bottomActions, { borderTopColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.bottomButton, { backgroundColor: colors.error }]}
+          onPress={() =>
+            Alert.alert(
+              'Clear Workout',
+              'Are you sure you want to clear all exercises and sets? This action cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Clear',
+                  style: 'destructive',
+                  onPress: () => {
+                    clearWorkout();
+                    showToast('Workout cleared', 'success');
+                  },
+                },
+              ],
+            )
+          }
+        >
+          <Text style={styles.bottomButtonText}>Clear Workout</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.bottomButton, { backgroundColor: colors.success }]}
+          onPress={finish}
+        >
+          <Text style={styles.bottomButtonText}>Finish Workout</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -584,7 +607,7 @@ const styles = StyleSheet.create({
   stopTimerButtonText: { color: '#fff', fontWeight: '600', fontSize: 12 },
   card: { borderWidth: 1, borderRadius: 12, padding: 16, marginBottom: 16 },
   exerciseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  exerciseName: { fontSize: 18, fontWeight: 'bold' },
+  exerciseName: { fontSize: 18, fontWeight: 'bold', flex: 1, marginRight: 8 },
   historyButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   historyButtonText: { color: '#fff', fontWeight: '600', fontSize: 12 },
   historyContainer: { marginBottom: 12, padding: 12, borderRadius: 8 },

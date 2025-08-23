@@ -12,7 +12,7 @@ import { useTheme } from '../context/ThemeProvider';
 import type { Workout } from '../context/WorkoutContext';
 import { useWorkout } from '../context/WorkoutContext';
 import { csvForWorkout, exportCSV } from '../utils/exportUtils';
-import { calculateSetVolume, calculateTotalVolumeForSets, convertWeight } from '../utils/weightConversion';
+import { calculateSetVolume, calculateTotalVolumeForSets, convertWeight, formatLargeNumber } from '../utils/weightConversion';
 
 export default function HistoryScreen() {
   const { workoutHistory, showToast, settings } = useWorkout();
@@ -68,6 +68,7 @@ export default function HistoryScreen() {
       showToast('No workouts to export', 'info');
       return;
     }
+
     try {
       const csv = workoutHistory
         .map(csvForWorkout)
@@ -84,6 +85,7 @@ export default function HistoryScreen() {
   /* render one card */
   const Card = ({ item }: { item: Workout }) => {
     const expanded = selected === item.id;
+
     return (
       <TouchableOpacity
         style={[styles.card, { backgroundColor: colors.surface }]}
@@ -110,7 +112,7 @@ export default function HistoryScreen() {
               {totalSets(item)} sets
             </Text>
             {item.duration ? (
-              <Text style={[styles.statText, { color: colors.primary }]}>
+              <Text style={[styles.statText, { color: colors.textSecondary }]}>
                 {item.duration}m
               </Text>
             ) : null}
@@ -118,13 +120,13 @@ export default function HistoryScreen() {
         </View>
 
         {/* short list of exercises */}
-        <View style={styles.exerciseRow}>
-          {item.exercises.map((ex, i) => (
-            <Text key={i} style={[styles.exerciseText, { color: colors.text }]}>
+        {item.exercises.map((ex, i) => (
+          <View key={i} style={styles.exerciseRow}>
+            <Text style={[styles.exerciseText, { color: colors.textSecondary }]}>
               {ex.name} ({ex.sets.length})
             </Text>
-          ))}
-        </View>
+          </View>
+        ))}
 
         {/* expanded details */}
         {expanded && (
@@ -138,28 +140,24 @@ export default function HistoryScreen() {
                   // Convert weight to user's preferred unit for display
                   const convertedWeight = convertWeight(s.weight, s.unit, settings.weightUnit);
                   const setVolume = calculateSetVolume(s.reps, s.weight, s.unit, settings.weightUnit);
-                  
+
                   return (
-                    <Text
-                      key={i}
-                      style={[styles.setLine, { color: colors.textSecondary }]}
-                    >
+                    <Text key={i} style={[styles.setLine, { color: colors.textSecondary }]}>
                       Set {i + 1}: {s.reps} × {convertedWeight.toFixed(1)}{settings.weightUnit}
                       {s.unit !== settings.weightUnit && (
-                        <Text style={{ fontSize: 10, opacity: 0.7 }}>
+                        <Text style={{ color: colors.textSecondary }}>
                           {' '}(orig: {s.weight}{s.unit})
                         </Text>
                       )}
-                      {' '}Vol: {setVolume.toFixed(1)}{settings.weightUnit}
+                      {' '}Vol: {formatLargeNumber(setVolume)}{settings.weightUnit}
                     </Text>
                   );
                 })}
               </View>
             ))}
-
             <View style={[styles.summaryBox, { backgroundColor: colors.background }]}>
               <Text style={[styles.summaryText, { color: colors.text }]}>
-                Total Volume: {totalWt(item).toFixed(1)}{settings.weightUnit}
+                Total Volume: {formatLargeNumber(totalWt(item))}{settings.weightUnit}
               </Text>
               <Text style={[styles.summaryText, { color: colors.text }]}>
                 Total Sets: {totalSets(item)}
@@ -179,7 +177,7 @@ export default function HistoryScreen() {
   /* empty list */
   if (!workoutHistory.length) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.emptyBox}>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
             No Workout History
@@ -188,65 +186,65 @@ export default function HistoryScreen() {
             Complete your first workout to see it here.
           </Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   /* main list */
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* top bar */}
-        <View style={[styles.topBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <Text style={[styles.topTitle, { color: colors.text }]}>Workout History</Text>
-          <TouchableOpacity
-            style={[styles.exportBtn, { backgroundColor: colors.primary }]}
-            onPress={() =>
-              Alert.alert('Export', 'Choose export option', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'All Workouts', onPress: exportAll },
-              ])
-            }
-          >
-            <Text style={styles.exportText}>Export</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* stat bar */}
-        <View style={[styles.statBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <View style={styles.statCol}>
-            <Text style={[styles.statNumber, { color: colors.primary }]}>
-              {workoutHistory.length}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Workouts
-            </Text>
-          </View>
-          <View style={styles.statCol}>
-            <Text style={[styles.statNumber, { color: colors.primary }]}>
-              {workoutHistory.reduce((t, w) => t + totalSets(w), 0)}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Sets
-            </Text>
-          </View>
-          <View style={styles.statCol}>
-            <Text style={[styles.statNumber, { color: colors.primary }]}>
-              {getTotalHistoryVolume().toFixed(0)}{settings.weightUnit}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Volume
-            </Text>
-          </View>
-        </View>
-
-        <FlatList
-          data={workoutHistory}
-          keyExtractor={(w) => w.id}
-          renderItem={Card}
-          contentContainerStyle={styles.listWrap}
-        />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* top bar */}
+      <View style={[styles.topBar, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.topTitle, { color: colors.text }]}>
+          Workout History
+        </Text>
+        <TouchableOpacity
+          style={[styles.exportBtn, { backgroundColor: colors.primary }]}
+          onPress={() =>
+            Alert.alert('Export', 'Choose export option', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'All Workouts', onPress: exportAll },
+            ])
+          }
+        >
+          <Text style={styles.exportText}>Export</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* stat bar */}
+      <View style={[styles.statBar, { borderBottomColor: colors.border }]}>
+        <View style={styles.statCol}>
+          <Text style={[styles.statNumber, { color: colors.primary }]}>
+            {workoutHistory.length}
+          </Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            Workouts
+          </Text>
+        </View>
+        <View style={styles.statCol}>
+          <Text style={[styles.statNumber, { color: colors.primary }]}>
+            {workoutHistory.reduce((t, w) => t + totalSets(w), 0)}
+          </Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            Sets
+          </Text>
+        </View>
+        <View style={styles.statCol}>
+          <Text style={[styles.statNumber, { color: colors.primary }]} numberOfLines={1}>
+            {formatLargeNumber(getTotalHistoryVolume())}{settings.weightUnit}
+          </Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            Volume
+          </Text>
+        </View>
+      </View>
+
+      <FlatList
+        data={workoutHistory}
+        keyExtractor={w => w.id}
+        renderItem={Card}
+        contentContainerStyle={styles.listWrap}
+      />
     </SafeAreaView>
   );
 }

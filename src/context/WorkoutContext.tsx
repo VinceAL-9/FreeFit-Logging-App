@@ -1,5 +1,7 @@
 // src/context/WorkoutContext.tsx
 
+// src/context/WorkoutContext.tsx
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
@@ -37,6 +39,7 @@ export interface Settings {
 interface WorkoutContextType {
   selectedExercises: Exercise[];
   addExercise: (exercise: { name: string }) => void;
+  removeExercise: (exerciseName: string) => void;
   addSetToExercise: (exerciseName: string, reps: number, weight: number, unit: 'kg' | 'lbs') => void;
   removeSetFromExercise: (exerciseName: string, setIndex: number) => void;
   editSetInExercise: (exerciseName: string, setIndex: number, reps: number, weight: number, unit: 'kg' | 'lbs') => void;
@@ -76,13 +79,13 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isRestTimerActive, setIsRestTimerActive] = useState(false);
   const [restTimeRemaining, setRestTimeRemaining] = useState(0);
   const [workoutStartTime, setWorkoutStartTime] = useState<Date | null>(null);
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
-  const restTimerRef = useRef<any>(null); // or useRef<number | null>(null)
-  const toastTimeoutRef = useRef<any>(null);
+  const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -167,18 +170,21 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setToastMessage(message);
     setToastType(type);
     setToastVisible(true);
+
     // Clear any existing timeout
     if (toastTimeoutRef.current) {
       clearTimeout(toastTimeoutRef.current);
     }
+
     // Auto-hide toast after 3 seconds
-    toastTimeoutRef.current = setTimeout(() => { // Type 'number' is not assignable to type 'Timeout'.
+    toastTimeoutRef.current = setTimeout(() => {
       setToastVisible(false);
     }, 3000);
   };
 
   const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'error' = 'light') => {
     if (!settings.hapticsEnabled) return;
+
     try {
       switch (type) {
         case 'light':
@@ -223,6 +229,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     setSelectedExercises(prev => [...prev, newExercise]);
+
     // Start workout timer if this is the first exercise
     if (selectedExercises.length === 0) {
       setWorkoutStartTime(new Date());
@@ -232,11 +239,23 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     triggerHaptic('light');
   };
 
+  const removeExercise = (exerciseName: string) => {
+    setSelectedExercises(prev => prev.filter(exercise => exercise.name !== exerciseName));
+    showToast(`${exerciseName} removed from workout`, 'info');
+    triggerHaptic('medium');
+
+    // If no exercises left, clear workout start time
+    if (selectedExercises.length === 1) {
+      setWorkoutStartTime(null);
+      stopRestTimer();
+    }
+  };
+
   const addSetToExercise = (exerciseName: string, reps: number, weight: number, unit: 'kg' | 'lbs') => {
     const newSet: Set = {
       reps,
       weight,
-      unit, // Now passed from UI
+      unit,
       timestamp: new Date().toISOString(),
     };
 
@@ -288,40 +307,42 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const startRestTimer = (seconds: number = settings.restTimerDuration) => {
-  // Clear any existing timer
-  if (restTimerRef.current) {
-    clearInterval(restTimerRef.current);
-  }
+    // Clear any existing timer
+    if (restTimerRef.current) {
+      clearInterval(restTimerRef.current);
+    }
 
-  setRestTimeRemaining(seconds);
-  setIsRestTimerActive(true);
+    setRestTimeRemaining(seconds);
+    setIsRestTimerActive(true);
 
-  restTimerRef.current = setInterval(() => {
-    setRestTimeRemaining(prev => {
-      if (prev <= 1) {
-        // Timer finished
-        setIsRestTimerActive(false);
-        clearInterval(restTimerRef.current!);
-        
-        // Play sound if enabled in settings
-        if (settings.soundEnabled) {
-          playRestTimerSound();
+    restTimerRef.current = setInterval(() => {
+      setRestTimeRemaining(prev => {
+        if (prev <= 1) {
+          // Timer finished
+          setIsRestTimerActive(false);
+          clearInterval(restTimerRef.current!);
+
+          // Play sound if enabled in settings
+          if (settings.soundEnabled) {
+            playRestTimerSound();
+          }
+
+          showToast('Rest time finished!', 'success');
+          triggerHaptic('success');
+          return 0;
         }
-        
-        showToast('Rest time finished!', 'success');
-        triggerHaptic('success');
-        return 0;
-      }
-      return prev - 1;
-    });
-  }, 1000);
-};
+
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const stopRestTimer = () => {
     if (restTimerRef.current) {
       clearInterval(restTimerRef.current);
       restTimerRef.current = null;
     }
+
     setIsRestTimerActive(false);
     setRestTimeRemaining(0);
   };
@@ -351,6 +372,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Clear current workout
     clearWorkout();
+
     triggerHaptic('success');
     showToast(`Workout saved: ${workout.name}!`, 'success');
   };
@@ -359,12 +381,14 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSelectedExercises([]);
     setWorkoutStartTime(null);
     stopRestTimer();
+
     // Clear saved current workout
     AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_WORKOUT);
   };
 
   const getExerciseHistory = (exerciseName: string): Exercise[] => {
     const history: Exercise[] = [];
+
     workoutHistory.forEach(workout => {
       const exercise = workout.exercises.find(ex => ex.name === exerciseName);
       if (exercise && exercise.sets.length > 0) {
@@ -374,6 +398,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
       }
     });
+
     return history.slice(0, 20); // Return last 20 sessions
   };
 
@@ -392,6 +417,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const value: WorkoutContextType = {
     selectedExercises,
     addExercise,
+    removeExercise,
     addSetToExercise,
     removeSetFromExercise,
     editSetInExercise,

@@ -42,7 +42,7 @@ interface Exercise {
 }
 
 export default function ExerciseLibraryScreen() {
-  const { addExercise, showToast } = useWorkout();
+  const { addExercise, removeExercise, selectedExercises, showToast } = useWorkout();
   const { colors } = useTheme();
   const [exercises, setExercises] = useState<Exercise[]>(defaultExercises);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -86,7 +86,6 @@ export default function ExerciseLibraryScreen() {
     const existingExercise = exercises.find(
       ex => ex.name.toLowerCase() === newExerciseName.trim().toLowerCase()
     );
-
     if (existingExercise) {
       showToast('An exercise with this name already exists', 'error');
       return;
@@ -120,16 +119,25 @@ export default function ExerciseLibraryScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
+            // Remove from exercises list
             const updatedExercises = exercises.filter(ex => ex.name !== exerciseName);
             setExercises(updatedExercises);
-            
-            // Save updated custom exercises
+
+            // Save updated custom exercises to storage
             const customExercises = updatedExercises.filter(ex => ex.isCustom);
             saveCustomExercises(customExercises);
-            showToast('Exercise deleted', 'info');
+
+            // Check if this exercise is in the current workout and remove it
+            const exerciseInWorkout = selectedExercises.find(ex => ex.name === exerciseName);
+            if (exerciseInWorkout) {
+              removeExercise(exerciseName);
+              showToast(`${exerciseName} deleted from library and removed from current workout`, 'info');
+            } else {
+              showToast('Exercise deleted from library', 'info');
+            }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -148,148 +156,170 @@ export default function ExerciseLibraryScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Exercise Library</Text>
-          <TouchableOpacity
-            style={[styles.createButton, { backgroundColor: colors.primary }]}
-            onPress={() => setShowCreateModal(true)}
-          >
-            <Text style={styles.createButtonText}>+ Create</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={[styles.searchInput, { 
-              backgroundColor: colors.surface, 
-              borderColor: colors.border,
-              color: colors.text 
-            }]}
-            placeholder="Search exercises..."
-            placeholderTextColor={colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-
-        {/* Exercise List */}
-        <FlatList
-          data={categories}
-          keyExtractor={category => category}
-          contentContainerStyle={styles.listContainer}
-          renderItem={({ item: category }) => {
-            const categoryExercises = groupedExercises[category];
-            if (categoryExercises.length === 0) return null;
-
-            return (
-              <View style={styles.categorySection}>
-                <Text style={[styles.categoryTitle, { color: colors.primary }]}>
-                  {category} ({categoryExercises.length})
-                </Text>
-                {categoryExercises.map((exercise, index) => (
-                  <View key={exercise.name} style={[styles.exerciseItem, { backgroundColor: colors.surface }]}>
-                    <View style={styles.exerciseInfo}>
-                      <Text style={[styles.exerciseText, { color: colors.text }]}>{exercise.name}</Text>
-                      {exercise.isCustom && (
-                        <Text style={[styles.customBadge, { color: colors.info }]}>Custom</Text>
-                      )}
-                    </View>
-                    <View style={styles.exerciseActions}>
-                      <TouchableOpacity
-                        style={[styles.addButton, { backgroundColor: colors.primary }]}
-                        onPress={() => handleAdd(exercise)}
-                        >
-                        <Text style={[styles.addButtonText, { color: '#fff' }]}>Add</Text>
-                      </TouchableOpacity>
-
-                      {exercise.isCustom && (
-                        <TouchableOpacity
-                          style={[styles.deleteButton, { backgroundColor: colors.error }]}
-                          onPress={() => handleDeleteCustomExercise(exercise.name)}
-                        >
-                          <Text style={styles.deleteButtonText}>×</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            );
-          }}
-        />
-
-        {/* Create Exercise Modal */}
-        <Modal
-          visible={showCreateModal}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowCreateModal(false)}
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          Exercise Library
+        </Text>
+        <TouchableOpacity
+          style={[styles.createButton, { backgroundColor: colors.primary }]}
+          onPress={() => setShowCreateModal(true)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Create Custom Exercise</Text>
-              
-              <TextInput
-                style={[styles.modalInput, { 
-                  backgroundColor: colors.background, 
-                  borderColor: colors.border,
-                  color: colors.text 
-                }]}
-                placeholder="Exercise name"
-                placeholderTextColor={colors.textSecondary}
-                value={newExerciseName}
-                onChangeText={setNewExerciseName}
-                autoFocus
-              />
+          <Text style={styles.createButtonText}>+ Create</Text>
+        </TouchableOpacity>
+      </View>
 
-              <Text style={[styles.modalLabel, { color: colors.text }]}>Category:</Text>
-              <View style={styles.categoryGrid}>
-                {categories.map(category => (
-                  <TouchableOpacity
-                    key={category}
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={[
+            styles.searchInput,
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              color: colors.text,
+            },
+          ]}
+          placeholder="Search exercises..."
+          placeholderTextColor={colors.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      {/* Exercise List */}
+      <FlatList
+        data={categories}
+        keyExtractor={category => category}
+        contentContainerStyle={styles.listContainer}
+        renderItem={({ item: category }) => {
+          const categoryExercises = groupedExercises[category];
+          if (categoryExercises.length === 0) return null;
+
+          return (
+            <View style={styles.categorySection}>
+              <Text style={[styles.categoryTitle, { color: colors.text }]}>
+                {category} ({categoryExercises.length})
+              </Text>
+              {categoryExercises.map((exercise, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.exerciseItem,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <View style={styles.exerciseInfo}>
+                    <Text style={[styles.exerciseText, { color: colors.text }]}>
+                      {exercise.name}
+                    </Text>
+                    {exercise.isCustom && (
+                      <Text style={[styles.customBadge, { color: colors.primary }]}>
+                        Custom
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.exerciseActions}>
+                    <TouchableOpacity
+                      style={[styles.addButton, { backgroundColor: colors.primary }]}
+                      onPress={() => handleAdd(exercise)}
+                    >
+                      <Text style={styles.addButtonText}>Add</Text>
+                    </TouchableOpacity>
+                    {exercise.isCustom && (
+                      <TouchableOpacity
+                        style={[styles.deleteButton, { backgroundColor: colors.error }]}
+                        onPress={() => handleDeleteCustomExercise(exercise.name)}
+                      >
+                        <Text style={styles.deleteButtonText}>×</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          );
+        }}
+      />
+
+      {/* Create Exercise Modal */}
+      <Modal
+        visible={showCreateModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCreateModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Create Custom Exercise
+            </Text>
+
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                },
+              ]}
+              placeholder="Exercise name"
+              placeholderTextColor={colors.textSecondary}
+              value={newExerciseName}
+              onChangeText={setNewExerciseName}
+            />
+
+            <Text style={[styles.modalLabel, { color: colors.text }]}>
+              Category:
+            </Text>
+            <View style={styles.categoryGrid}>
+              {categories.map(category => (
+                <TouchableOpacity
+                  key={category}
+                  style={[
+                    styles.categoryButton,
+                    {
+                      backgroundColor:
+                        selectedCategory === category ? colors.primary : 'transparent',
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  onPress={() => setSelectedCategory(category)}
+                >
+                  <Text
                     style={[
-                      styles.categoryButton,
+                      styles.categoryButtonText,
                       {
-                        backgroundColor: selectedCategory === category ? colors.primary : colors.background,
-                        borderColor: colors.border,
+                        color:
+                          selectedCategory === category ? '#fff' : colors.text,
                       },
                     ]}
-                    onPress={() => setSelectedCategory(category)}
                   >
-                    <Text
-                      style={[
-                        styles.categoryButtonText,
-                        { color: selectedCategory === category ? '#fff' : colors.text },
-                      ]}
-                    >
-                      {category}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.modalButton, { backgroundColor: colors.textSecondary }]}
-                  onPress={() => setShowCreateModal(false)}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, { backgroundColor: colors.success }]}
-                  onPress={handleCreateExercise}
-                >
-                  <Text style={styles.modalButtonText}>Create</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.textSecondary }]}
+                onPress={() => setShowCreateModal(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                onPress={handleCreateExercise}
+              >
+                <Text style={styles.modalButtonText}>Create</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
-      </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -340,19 +370,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   addButton: {
-  paddingHorizontal: 16,
-  paddingVertical: 8,
-  borderRadius: 8,
-  alignItems: 'center',
-  justifyContent: 'center',
-  // backgroundColor will be passed dynamically from theme
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // backgroundColor will be passed dynamically from theme
   },
   addButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#fff', // white text
   },
-
   exerciseItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',

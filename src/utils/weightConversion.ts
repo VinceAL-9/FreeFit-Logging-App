@@ -1,6 +1,7 @@
 export type WeightUnit = 'kg' | 'lbs';
 
 export const KG_TO_LBS = 2.20462;
+
 export const LBS_TO_KG = 1 / KG_TO_LBS;
 
 export const convertWeight = (
@@ -35,4 +36,17 @@ export const calculateTotalVolumeForSets = (
   return sets.reduce((total, set) => {
     return total + calculateSetVolume(set.reps, set.weight, set.unit, targetUnit);
   }, 0);
+};
+
+// Format large numbers with abbreviations to prevent UI cramping
+export const formatLargeNumber = (num: number): string => {
+  if (num >= 1000000000) {
+    return (num / 1000000000).toFixed(1) + 'B';
+  } else if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M';
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K';
+  } else {
+    return num.toFixed(0);
+  }
 };
