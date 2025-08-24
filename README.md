@@ -1,4 +1,4 @@
-# Working-Logging-App
+# FreeFit
 
 ![Alt FreeFit Logo](assets/images/freefit_logo.png)
 
@@ -54,6 +54,10 @@ This MVP prioritizes core usability over features, ensuring that logging workout
 - Accessibility and privacy by default, including no third-party tracking
 
 By focusing on speed, resilience, and clarity, the app aims to become the most dependable workout companion in your pocket—always ready, never in the way.
+
+Note: This project was made by a lone software engineering student using AI (Perplexity Pro) as a tool in development.
+
+Link to first version (Version 1.0.0), android-only apk: https://expo.dev/accounts/vuncelantenweid/projects/freefit/builds/aa9d07bb-0a6e-4bff-bab0-27f8fa541f52
 
 
 
