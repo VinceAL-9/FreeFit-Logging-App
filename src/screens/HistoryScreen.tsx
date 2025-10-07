@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -18,6 +18,11 @@ export default function HistoryScreen() {
   const { workoutHistory, showToast, settings } = useWorkout();
   const { colors } = useTheme();
   const [selected, setSelected] = useState<string | null>(null);
+
+  // Create a limited history list that only shows the most recent 20 workouts
+  const limitedWorkoutHistory = useMemo(() => {
+    return [...workoutHistory].slice(0, 20);
+  }, [workoutHistory]);
 
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('en-US', {
@@ -211,14 +216,14 @@ export default function HistoryScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* stat bar */}
+      {/* stat bar - keep using full history for stats */}
       <View style={[styles.statBar, { borderBottomColor: colors.border }]}>
         <View style={styles.statCol}>
           <Text style={[styles.statNumber, { color: colors.primary }]}>
             {workoutHistory.length}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Workouts
+            Total Workouts
           </Text>
         </View>
         <View style={styles.statCol}>
@@ -226,7 +231,7 @@ export default function HistoryScreen() {
             {workoutHistory.reduce((t, w) => t + totalSets(w), 0)}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Sets
+            Total Sets
           </Text>
         </View>
         <View style={styles.statCol}>
@@ -234,13 +239,13 @@ export default function HistoryScreen() {
             {formatLargeNumber(getTotalHistoryVolume())}{settings.weightUnit}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Volume
+            Total Volume
           </Text>
         </View>
       </View>
 
       <FlatList
-        data={workoutHistory}
+        data={limitedWorkoutHistory}
         keyExtractor={w => w.id}
         renderItem={Card}
         contentContainerStyle={styles.listWrap}
@@ -279,4 +284,8 @@ const styles = StyleSheet.create({
   emptyBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   emptyTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 8 },
   emptyText: { fontSize: 16, textAlign: 'center' },
+  subtitle: { 
+    fontSize: 12,
+    fontWeight: 'normal',
+  },
 });

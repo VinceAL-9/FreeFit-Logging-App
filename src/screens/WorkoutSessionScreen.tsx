@@ -358,9 +358,21 @@ export default function WorkoutSessionScreen() {
                   {getExerciseHistory(item.name).length > 0 ? (
                     <>
                       {getExerciseHistory(item.name)[0].sets.map((st, si) => (
-                        <Text key={si} style={[styles.historySet, { color: colors.textSecondary }]}>
-                          {st.reps} reps @ {st.weight}{st.unit}
-                        </Text>
+                        <TouchableOpacity
+                          key={si}
+                          style={[styles.historySetRow, { backgroundColor: colors.surface }]}
+                          onPress={() => {
+                            setReps(st.reps.toString());
+                            setWt(st.weight.toString());
+                            setAddUnit(st.unit);
+                            setActiveEx(item.name); // Open add set area if not already open
+                            showToast(`Filled with Set ${si + 1} values`, 'success');
+                          }}
+                        >
+                          <Text style={[styles.historySet, { color: colors.textSecondary }]}>
+                            {st.reps} reps @ {st.weight}{st.unit}
+                          </Text>
+                        </TouchableOpacity>
                       ))}
                     </>
                   ) : (
@@ -611,6 +623,7 @@ const styles = StyleSheet.create({
   historySession: { marginBottom: 6 },
   historySessionTitle: { fontSize: 12, fontWeight: '600' },
   historySet: { fontSize: 12, marginLeft: 8, marginTop: 2 },
+  historySetRow: { padding: 8, marginVertical: 2, borderRadius: 6, marginLeft: 8 },
   noHistory: { fontSize: 12, fontStyle: 'italic' },
   setItem: { padding: 12, marginVertical: 4, borderRadius: 8 },
   setText: { fontSize: 14, fontWeight: '500' },

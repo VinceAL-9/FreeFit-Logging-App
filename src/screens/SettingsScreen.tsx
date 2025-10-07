@@ -200,7 +200,7 @@ const SettingsScreen: React.FC = () => {
               style={styles.settingRow}
               onPress={() => Alert.alert(
                 'Workout Tracker v1.0',
-                'A minimalist workout logging app designed for serious lifters.\n\nFeatures:\n• Offline-first data storage\n• Custom exercises creation\n• Unit conversion (kg/lbs)\n• Exercise history tracking\n• Customizable rest timers\n• Dark mode support\n• CSV data export',
+                'A minimalist workout logging app designed for serious lifters.\n\nFeatures:\n• Offline-first data storage\n• Custom exercises creation\n• Unit conversion (kg/lbs)\n• Inline history for quick logging\n• Exercise history tracking (Last 20 workouts)\n• Customizable rest timers\n• Dark mode support\n• CSV data export',
                 [{ text: 'OK' }]
               )}
             >
