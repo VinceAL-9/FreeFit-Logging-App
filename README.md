@@ -57,7 +57,7 @@ By focusing on speed, resilience, and clarity, the app aims to become the most d
 
 Note: This project was made by a lone software engineering student using AI (Perplexity Pro) as a tool in development.
 
-Link to first version (Version 1.0.0), android-only apk: https://expo.dev/accounts/vuncelantenweid/projects/freefit/builds/aa9d07bb-0a6e-4bff-bab0-27f8fa541f52
+Link to first version (Version 1.0.0), android-only apk: https://expo.dev/accounts/vuncelantenweid/projects/freefit/builds/2debb9e7-89dd-4665-9a52-a68e5d757da0
 
 
 
