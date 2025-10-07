@@ -353,21 +353,17 @@ export default function WorkoutSessionScreen() {
               {showHist === item.name && (
                 <View style={[styles.historyContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
                   <Text style={[styles.historyTitle, { color: colors.text }]}>
-                    Previous Sessions:
+                    Latest Session:
                   </Text>
-                  {getExerciseHistory(item.name).slice(0, 3).map((s, i) => (
-                    <View key={i} style={styles.historySession}>
-                      <Text style={[styles.historySessionTitle, { color: colors.textSecondary }]}>
-                        Session {i + 1}:
-                      </Text>
-                      {s.sets.map((st, si) => (
+                  {getExerciseHistory(item.name).length > 0 ? (
+                    <>
+                      {getExerciseHistory(item.name)[0].sets.map((st, si) => (
                         <Text key={si} style={[styles.historySet, { color: colors.textSecondary }]}>
                           {st.reps} reps @ {st.weight}{st.unit}
                         </Text>
                       ))}
-                    </View>
-                  ))}
-                  {!getExerciseHistory(item.name).length && (
+                    </>
+                  ) : (
                     <Text style={[styles.noHistory, { color: colors.textSecondary }]}>
                       No previous data
                     </Text>
@@ -452,7 +448,7 @@ export default function WorkoutSessionScreen() {
 
                   <View style={styles.editActions}>
                     <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: colors.success }]}
+                      style={[styles.actionButton, { backgroundColor: colors.primary }]}
                       onPress={() => {
                         const r = parseInt(editReps, 10);
                         const w = parseFloat(editWt);
@@ -473,7 +469,7 @@ export default function WorkoutSessionScreen() {
                       <Text style={styles.actionButtonText}>Save</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: colors.textSecondary }]}
+                      style={[styles.actionButton, { backgroundColor: colors.primaryDark }]}
                       onPress={() => setEditMode(null)}
                     >
                       <Text style={styles.actionButtonText}>Cancel</Text>
@@ -519,7 +515,7 @@ export default function WorkoutSessionScreen() {
 
                   <View style={styles.addSetActions}>
                     <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: colors.info }]}
+                      style={[styles.actionButton, { backgroundColor: colors.primaryLight }]}
                       onPress={() => {
                         const h = getExerciseHistory(item.name);
                         if (h.length > 0 && h[0].sets.length > 0) {
@@ -534,7 +530,7 @@ export default function WorkoutSessionScreen() {
                       <Text style={styles.actionButtonText}>Fill Last</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: colors.success }]}
+                      style={[styles.actionButton, { backgroundColor: colors.primary }]}
                       onPress={() => addSet(item.name)}
                     >
                       <Text style={styles.actionButtonText}>Add Set</Text>
@@ -545,7 +541,7 @@ export default function WorkoutSessionScreen() {
 
               {/* toggle button */}
               <TouchableOpacity
-                style={[styles.toggleButton, { backgroundColor: isActive ? colors.textSecondary : colors.primary }]}
+                style={[styles.toggleButton, { backgroundColor: isActive ? colors.primaryDark : colors.primary }]}
                 onPress={() => setActiveEx(isActive ? null : item.name)}
               >
                 <Text style={styles.toggleButtonText}>
@@ -582,7 +578,7 @@ export default function WorkoutSessionScreen() {
           <Text style={styles.bottomButtonText}>Clear Workout</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.bottomButton, { backgroundColor: colors.success }]}
+          style={[styles.bottomButton, { backgroundColor: colors.warning }]}
           onPress={finish}
         >
           <Text style={styles.bottomButtonText}>Finish Workout</Text>

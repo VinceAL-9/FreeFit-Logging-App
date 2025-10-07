@@ -305,7 +305,7 @@ export default function ExerciseLibraryScreen() {
 
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: colors.textSecondary }]}
+                style={[styles.modalButton, { backgroundColor: colors.primaryDark }]}
                 onPress={() => setShowCreateModal(false)}
               >
                 <Text style={styles.modalButtonText}>Cancel</Text>
